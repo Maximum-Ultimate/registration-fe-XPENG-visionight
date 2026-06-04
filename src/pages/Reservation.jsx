@@ -1,0 +1,285 @@
+import { createSignal, onMount } from "solid-js";
+import { useNavigate } from "@solidjs/router";
+import MD5 from "crypto-js/md5";
+import InputField from "../components/InputField";
+import {
+  User,
+  Mail,
+  Phone,
+  Building2,
+  Briefcase,
+  MapPin,
+  Megaphone,
+  CalendarDays,
+} from "lucide-solid";
+import SelectField from "../components/SelectField";
+import hero from "../assets/kvXpeng.jpg";
+import logo from "../assets/logoXPENG.png";
+import { connectWS, sendWS } from "../services/ws";
+const categoryMap = {
+  vip: "VIP",
+  media: "MEDIA",
+  dealer: "DEALER",
+  partner: "PARTNER",
+  guest: "GUEST",
+};
+
+export default function Reservation() {
+  const navigate = useNavigate();
+  const category = "VIP";
+  const [loading, setLoading] = createSignal(false);
+  const [form, setForm] = createSignal({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    jobTitle: "",
+    city: "",
+    source: "",
+  });
+  onMount(() => {
+    connectWS();
+  });
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (loading()) return;
+
+  setLoading(true);
+
+  const payload = {
+    action: "REGISTER",
+    payload: {
+      name: form().name,
+      email: form().email,
+      company: form().company,
+      category,
+      password: MD5(
+        `${form().email}-${Date.now()}`
+      ).toString(),
+      sendEmail: false,
+    },
+  };
+
+  try {
+    console.time("REGISTER");
+
+    const rawResponse = await sendWS(payload);
+
+    console.timeEnd("REGISTER");
+
+    console.log("RAW RESPONSE:", rawResponse);
+    console.log("TYPE:", typeof rawResponse);
+
+    const response =
+      typeof rawResponse === "string"
+        ? JSON.parse(rawResponse)
+        : rawResponse;
+
+    console.log("PARSED RESPONSE:", response);
+
+    if (
+      response?.status === "success" &&
+      response?.type === "registered"
+    ) {
+      console.log("BEFORE NAVIGATE");
+
+      navigate(
+        `/success?qr=${encodeURIComponent(
+          response.data.qrCodeFilePath
+        )}&userId=${response.data.userId}`
+      );
+
+      console.log("AFTER NAVIGATE");
+    } else {
+      console.error(
+        "Unexpected response:",
+        response
+      );
+    }
+  } catch (err) {
+    console.error("REGISTER ERROR:", err);
+    alert("Registration failed");
+  } finally {
+    setLoading(false);
+  }
+};
+
+  return (
+    <div class="min-h-screen bg-black py-10 px-4">
+      <div class="max-w-[1180px] mx-auto overflow-hidden rounded-2xl border border-white/10 bg-black">
+        <div class="h-[90px] md:h-[110px] bg-black border-b border-white/10 flex items-center justify-center">
+          <img
+            src={logo}
+            alt="XPENG"
+            class="h-10 md:h-14 w-auto object-contain"
+          />
+        </div>
+        <div class="relative">
+          <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+          <div class="relative">
+            <img
+              src={hero}
+              alt="Hero"
+              class="w-full h-[280px] sm:h-[350px] md:h-[420px] lg:h-[520px] object-cover"
+            />
+
+            <div class="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
+
+            <div class="absolute left-4 right-4 md:left-8 md:right-auto top-1/2 -translate-y-1/2 max-w-full md:max-w-[550px]">
+              <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-wide leading-none">
+                XPENG
+                <br />
+                VISION NIGHT
+              </h1>
+
+              <p class="mt-3 md:mt-6 text-[#D8FF24] text-lg sm:text-xl md:text-2xl lg:text-3xl font-medium uppercase leading-tight">
+                EXPLORING THE FUTURE
+                <br />
+                OF INTELLIGENT MOBILITY
+              </p>
+
+              <div class="mt-4 md:mt-6 w-16 md:w-24 h-[2px] bg-[#D8FF24]" />
+
+              <div class="mt-4 md:mt-8 space-y-3 md:space-y-4">
+                <div class="flex items-center gap-2 md:gap-4">
+                  <CalendarDays size={20} class="text-[#D8FF24] shrink-0" />
+
+                  <span class="text-white text-sm sm:text-base md:text-xl lg:text-2xl font-medium">
+                    27 - 28 June 2024 | 18.00 WIB
+                  </span>
+                </div>
+
+                <div class="flex items-center gap-2 md:gap-4">
+                  <MapPin size={20} class="text-[#D8FF24] shrink-0" />
+
+                  <span class="text-white text-sm sm:text-base md:text-xl lg:text-2xl font-medium">
+                    Istora Senayan, Jakarta
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="relative overflow-hidden px-8 py-12 md:px-12 bg-[radial-gradient(circle_at_top_right,rgba(216,255,36,.08),transparent_25%),#030303]">
+          <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-[#D8FF24]/10 rounded-full blur-[180px] pointer-events-none" />
+          <h2 class="text-4xl md:text-5xl font-bold tracking-wide text-white">
+            CONFIRM YOUR ATTENDANCE
+          </h2>
+          <p class="mt-3 text-zinc-300 text-lg">
+            Please fill in your details below to confirm your attendance
+          </p>
+          <p class="text-[#D8FF24] font-semibold uppercase mt-1">
+            at XPENG VISION NIGHT.
+          </p>
+          <form onSubmit={handleSubmit} class="mt-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              <InputField
+                label="FULL NAME"
+                required
+                icon={User}
+                placeholder="Enter your full name"
+                value={form().name}
+                onInput={(e) =>
+                  setForm({ ...form(), name: e.currentTarget.value })
+                }
+              />
+              <InputField
+                label="EMAIL ADDRESS"
+                required
+                type="email"
+                icon={Mail}
+                placeholder="Enter your email address"
+                value={form().email}
+                onInput={(e) =>
+                  setForm({ ...form(), email: e.currentTarget.value })
+                }
+              />
+              <InputField
+                label="PHONE NUMBER"
+                required
+                icon={Phone}
+                placeholder="Enter your phone number"
+                value={form().phone}
+                onInput={(e) =>
+                  setForm({ ...form(), phone: e.currentTarget.value })
+                }
+              />
+              <InputField
+                label="COMPANY / ORGANIZATION"
+                icon={Building2}
+                placeholder="Enter company or organization"
+                value={form().company}
+                onInput={(e) =>
+                  setForm({ ...form(), company: e.currentTarget.value })
+                }
+              />
+              <InputField
+                label="JOB TITLE"
+                icon={Briefcase}
+                placeholder="Enter your job title"
+                value={form().jobTitle}
+                onInput={(e) =>
+                  setForm({ ...form(), jobTitle: e.currentTarget.value })
+                }
+              />
+              <SelectField
+                label="CITY"
+                icon={MapPin}
+                value={form().city}
+                onChange={(e) =>
+                  setForm({ ...form(), city: e.currentTarget.value })
+                }
+                options={[
+                  "Select your city",
+                  "Jakarta",
+                  "Bandung",
+                  "Surabaya",
+                  "Semarang",
+                  "Yogyakarta",
+                ]}
+              />
+            </div>
+
+            <div class="mt-6">
+              <SelectField
+                label="HOW DID YOU HEAR ABOUT XPENG VISION NIGHT? (OPTIONAL)"
+                icon={Megaphone}
+                value={form().source}
+                onChange={(e) =>
+                  setForm({ ...form(), source: e.currentTarget.value })
+                }
+                options={[
+                  "Select an option",
+                  "Instagram",
+                  "Facebook",
+                  "TikTok",
+                  "Website",
+                  "Friend",
+                  "Email Invitation",
+                ]}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading()}
+              class="mt-10 w-full h-[82px] rounded-xl bg-[#D8FF24] text-black text-2xl font-bold tracking-wider shadow-[0_0_40px_rgba(216,255,36,.45)] transition-all hover:brightness-105 disabled:opacity-50"
+            >
+              <div class="flex items-center justify-center gap-6">
+                {loading() ? "SUBMITTING..." : "SUBMIT"}
+                <span class="text-3xl">→</span>
+              </div>
+            </button>
+
+            <p class="mt-6 text-center text-zinc-500">
+              By clicking submit, you agree to XPENG's
+              <span class="text-[#D8FF24] ml-1">Privacy Policy</span>
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
