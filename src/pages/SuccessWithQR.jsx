@@ -1,5 +1,10 @@
 import { useLocation } from "@solidjs/router";
-import { CheckCircle2, Bell, CalendarDays, MapPin, Mail } from "lucide-solid";
+import {
+  CheckCircle2,
+  Bell,
+  CalendarDays,
+  MapPin,
+} from "lucide-solid";
 
 import hero from "../assets/kvXpeng.jpg";
 import logo from "../assets/logoXPENG.png";
@@ -10,7 +15,9 @@ export default function Success() {
   const qr = params.get("qr");
   const uniqueId = qr?.split("/").pop()?.replace(".png", "");
   const userId = params.get("userId");
-  const qrUrl = qr ? `https://cloud.xpengvisionnight.co.id/${qr}` : null;
+  const qrUrl = qr
+    ? `https://cloud.xpengvisionnight.co.id/${qr}`
+    : null;
 
   return (
     <div class="min-h-screen bg-black shadow-2xl py-8 px-4">
@@ -20,7 +27,11 @@ export default function Success() {
           <p class="text-zinc-300 text-sm md:text-base">
             Thank you for your confirmation. See you at the event!
           </p>
-          <img src={logo} alt="XPENG" class="h-8 md:h-10 mx-auto mt-4" />
+          <img
+            src={logo}
+            alt="XPENG"
+            class="h-8 md:h-10 mx-auto mt-4"
+          />
         </div>
         {/* HERO */}
         <div class="relative">
@@ -44,12 +55,22 @@ export default function Success() {
             <div class="mt-4 w-20 h-[2px] bg-[#D8FF24]" />
             <div class="mt-4 space-y-2">
               <div class="flex items-center gap-2 text-white">
-                <CalendarDays size={18} class="text-[#D8FF24]" />
-                <span>27 - 28 June 2024</span>
+                <CalendarDays
+                  size={18}
+                  class="text-[#D8FF24]"
+                />
+                <span>
+                  27 - 28 June 2024 
+                </span>
               </div>
               <div class="flex items-center gap-2 text-white">
-                <MapPin size={18} class="text-[#D8FF24]" />
-                <span>Istora Senayan, Jakarta</span>
+                <MapPin
+                  size={18}
+                  class="text-[#D8FF24]"
+                />
+                <span>
+                  Istora Senayan, Jakarta
+                </span>
               </div>
             </div>
           </div>
@@ -58,56 +79,77 @@ export default function Success() {
         <div class="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,rgba(216,255,36,.08),transparent_25%),#030303] px-6 md:px-12 py-12">
           <div class="absolute top-0 right-0 w-[400px] h-[400px] bg-[#D8FF24]/10 rounded-full blur-[160px]" />
           <div class="text-center">
-            <CheckCircle2 size={52} class="mx-auto text-[#D8FF24]" />
+            <CheckCircle2
+              size={52}
+              class="mx-auto text-[#D8FF24]"
+            />
             <h2 class="mt-5 text-3xl md:text-5xl font-bold">
-              REGISTRATION RECEIVED
+              YOUR REGISTRATION IS CONFIRMED!
             </h2>
+            <p class="mt-4 text-zinc-300 max-w-2xl mx-auto">
+              We look forward to welcoming you at XPENG
+              VISION NIGHT. Please bring the QR Code
+              below for event check-in.
+            </p>
           </div>
-          <div class="max-w-2xl mx-auto mt-10">
-            <div class="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm text-center">
-              <Mail size={60} class="mx-auto text-[#D8FF24]" />
-
-              <h3 class="mt-5 text-2xl font-bold">CHECK YOUR EMAIL</h3>
-
-              <p class="mt-4 text-zinc-300 leading-relaxed">
-                Thank you for registering for XPENG Vision Night.
-              </p>
-
-              <p class="mt-4 text-zinc-300 leading-relaxed">
-                We have sent a confirmation email to the email address you
-                provided.
-              </p>
-
-              <p class="mt-4 text-zinc-300 leading-relaxed">
-                Please open the email and complete your RSVP confirmation.
-              </p>
-
-              <p class="mt-4 text-[#D8FF24] font-semibold">
-                Your event QR Code will be available after your registration has
-                been confirmed.
-              </p>
+          {/* QR CARD */}
+          <div class="max-w-md mx-auto mt-10">
+            <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+              <h3 class="text-center text-[#D8FF24] font-semibold uppercase tracking-widest">
+                YOUR QR CODE
+              </h3>
+              {qrUrl && (
+                <img
+                  src={qrUrl}
+                  alt="QR Code"
+                  class="w-56 h-56 mx-auto mt-5 bg-white p-3 rounded-lg"
+                />
+              )}
+              <div class="mt-4 text-center">
+                <p class="text-zinc-400">
+                  Registration ID
+                </p>
+                <p class="text-[#D8FF24] font-semibold">
+                  {uniqueId}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* REMINDER */}
           <div class="max-w-xl mx-auto mt-8">
             <div class="flex gap-5 items-center border border-white/10 bg-white/5 rounded-xl p-5">
-              <Bell size={30} class="text-[#D8FF24]" />
+              <Bell
+                size={30}
+                class="text-[#D8FF24]"
+              />
               <div class="w-px self-stretch bg-[#D8FF24]" />
               <div>
-                <h4 class="font-semibold text-xl">EVENT REMINDER</h4>
+                <h4 class="font-semibold text-xl">
+                  EVENT REMINDER
+                </h4>
                 <div class="mt-2 text-zinc-300 space-y-1">
-                  <p>Date : 27 - 28 June 2024</p>
+                  <p>
+                    Date : 27 - 28 June 2024
+                  </p>
                   <p>Time : 18.00 WIB</p>
-                  <p>Venue : Istora Senayan, Jakarta</p>
+                  <p>
+                    Venue : Istora Senayan,
+                    Jakarta
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="text-center mt-10 text-zinc-400 italic">
-            <p>If you have any questions, feel free to contact us.</p>
-            <p class="mt-2">See you there!</p>
+            <p>
+              If you have any questions, feel free
+              to contact us.
+            </p>
+            <p class="mt-2">
+              See you there!
+            </p>
           </div>
         </div>
 

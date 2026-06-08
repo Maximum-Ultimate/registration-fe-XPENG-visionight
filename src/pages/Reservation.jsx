@@ -1,6 +1,7 @@
 import { createSignal, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import MD5 from "crypto-js/md5";
+import Swal from "sweetalert2";
 
 import InputField from "../components/InputField";
 import {
@@ -26,17 +27,15 @@ const categoryMap = {
   d4k9p31WsM: "COMMUNITY",
   e2m7q88HxV: "PUBLIC",
 };
-
 const categoryTitleMap = {
   "SUPER VVIP": "SUPER VVIP INVITATION",
-  "VVIP": "VVIP INVITATION",
-  "VIP": "VIP INVITATION",
-  "DEALER": "DEALER INVITATION",
-  "MEDIA": "MEDIA INVITATION",
-  "COMMUNITY": "COMMUNITY INVITATION",
-  "PUBLIC": "PUBLIC INVITATION",
+  VVIP: "VVIP INVITATION",
+  VIP: "VIP INVITATION",
+  DEALER: "DEALER INVITATION",
+  MEDIA: "MEDIA INVITATION",
+  COMMUNITY: "COMMUNITY INVITATION",
+  PUBLIC: "PUBLIC INVITATION",
 };
-
 export default function Reservation() {
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(window.location.search);
@@ -55,19 +54,120 @@ export default function Reservation() {
   onMount(() => {
     connectWS();
   });
+  const validateForm = () => {
+    if (!form().name.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Full Name Required",
+        text: "Please enter your full name.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return false;
+    }
+
+    if (!form().email.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Email Required",
+        text: "Please enter your email address.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form().email.trim())) {
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Email",
+        text: "Please enter a valid email address.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return false;
+    }
+    if (!form().phone.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Phone Number Required",
+        text: "Please enter your phone number.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return false;
+    }
+
+    if (!/^[0-9]+$/.test(form().phone)) {
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Phone Number",
+        text: "Phone number must contain numbers only.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return false;
+    }
+
+    if (!form().company.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Company Required",
+        text: "Please enter your company or organization.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return false;
+    }
+
+    if (!form().jobTitle.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Job Title Required",
+        text: "Please enter your job title.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return false;
+    }
+
+    if (!form().city.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "City Required",
+        text: "Please enter your city.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return false;
+    }
+
+    return true;
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    if (!validateForm()) {
+      return;
+    }
     if (loading()) return;
-
     setLoading(true);
-
     const payload = {
       action: "REGISTER",
       payload: {
         name: form().name,
         email: form().email,
+        phone: form().phone,
         company: form().company,
+        position: form().jobTitle,
+        city: form().city,
+        source: form().source,
         category,
         password: MD5(`${form().email}-${Date.now()}`).toString(),
         sendEmail: true,
@@ -93,6 +193,15 @@ export default function Reservation() {
       if (response?.status === "success" && response?.type === "registered") {
         console.log("BEFORE NAVIGATE");
 
+        await Swal.fire({
+          icon: "success",
+          title: "Registration Successful",
+          text: "Please check your email to complete your RSVP confirmation.",
+          confirmButtonColor: "#D8FF24",
+          background: "#111111",
+          color: "#ffffff",
+        });
+
         navigate(
           `/success?qr=${encodeURIComponent(
             response.data.qrCodeFilePath,
@@ -105,7 +214,14 @@ export default function Reservation() {
       }
     } catch (err) {
       console.error("REGISTER ERROR:", err);
-      alert("Registration failed");
+      Swal.fire({
+        icon: "error",
+        title: "Registration Failed",
+        text: err?.message || "An unexpected error occurred.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
     } finally {
       setLoading(false);
     }
@@ -190,6 +306,24 @@ export default function Reservation() {
           <p class="text-[#D8FF24] font-semibold uppercase mt-1">
             at XPENG VISION NIGHT.
           </p>
+          <div class="mt-8 border border-[#D8FF24]/20 bg-[#D8FF24]/5 rounded-xl p-5">
+            <h3 class="text-[#D8FF24] font-semibold">IMPORTANT NOTICE</h3>
+
+            <p class="mt-3 text-zinc-300 leading-relaxed">
+              Please ensure all information entered is accurate and matches your
+              official identification.
+            </p>
+
+            <p class="mt-2 text-zinc-300 leading-relaxed">
+              Your RSVP confirmation, event updates, and admission QR Code will
+              be sent to the email address provided below.
+            </p>
+
+            <p class="mt-2 text-zinc-400 text-sm">
+              Incorrect email addresses may prevent you from receiving your
+              invitation and event access.
+            </p>
+          </div>
           <form onSubmit={handleSubmit} class="mt-10">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
               <InputField
@@ -213,6 +347,7 @@ export default function Reservation() {
                   setForm({ ...form(), email: e.currentTarget.value })
                 }
               />
+
               <InputField
                 label="PHONE NUMBER"
                 required
@@ -220,9 +355,15 @@ export default function Reservation() {
                 placeholder="Enter your phone number"
                 value={form().phone}
                 onInput={(e) =>
-                  setForm({ ...form(), phone: e.currentTarget.value })
+                  setForm({
+                    ...form(),
+                    phone: e.currentTarget.value
+                      .replace(/\D/g, "")
+                      .slice(0, 15),
+                  })
                 }
               />
+
               <InputField
                 label="COMPANY / ORGANIZATION"
                 icon={Building2}
@@ -241,22 +382,21 @@ export default function Reservation() {
                   setForm({ ...form(), jobTitle: e.currentTarget.value })
                 }
               />
-              <SelectField
-                label="CITY"
-                icon={MapPin}
-                value={form().city}
-                onChange={(e) =>
-                  setForm({ ...form(), city: e.currentTarget.value })
-                }
-                options={[
-                  "Select your city",
-                  "Jakarta",
-                  "Bandung",
-                  "Surabaya",
-                  "Semarang",
-                  "Yogyakarta",
-                ]}
-              />
+              <div>
+                <InputField
+                  label="CITY"
+                  required
+                  icon={MapPin}
+                  placeholder="Enter your city"
+                  value={form().city}
+                  onInput={(e) =>
+                    setForm({
+                      ...form(),
+                      city: e.currentTarget.value,
+                    })
+                  }
+                />
+              </div>
             </div>
 
             <div class="mt-6">
