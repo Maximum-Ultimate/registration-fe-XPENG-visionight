@@ -21,13 +21,13 @@ jobs:
       - name: Deploy Application
         uses: appleboy/ssh-action@v0.1.7
         with:
-          host: ${{ secrets.XPVN26_HOST }}
-          username: ${{ secrets.XPVN26_USER }}
-          password: ${{ secrets.XPVN26_PASSWORD }}
+          host: ${{ secrets.RSVXPVN26_HOST }}
+          username: ${{ secrets.RSVXPVN26_USER }}
+          password: ${{ secrets.RSVXPVN26_PASSWORD }}
           port: 22
           script: |
             # Ensure npm and node are in the PATH
-            export PATH=$PATH:/home/abracodebra-microsite/.nvm/versions/node/v22.22.2/bin
+            export PATH=$PATH:/home/xpengvisionnight-rsvp/.nvm/versions/node/v22.22.3/bin
           
             # Check if npm is available
             which npm || { echo "npm not found"; exit 1; }
@@ -35,7 +35,7 @@ jobs:
             echo "Starting deployment process..."
 
             # Navigate to the application's directory
-            cd /home/abracodebra-microsite/htdocs/microsite.abracodebra.com/abracodebra-microsite || exit
+            cd /home/xpengvisionnight-rsvp/htdocs/rsvp.xpengvisionnight.co.id/registration-fe-XPENG-visionight || exit
 
             # Pull the latest changes from the GitHub repository
             git pull origin main

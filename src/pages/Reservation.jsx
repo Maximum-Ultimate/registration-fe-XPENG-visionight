@@ -1,6 +1,7 @@
 import { createSignal, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import MD5 from "crypto-js/md5";
+
 import InputField from "../components/InputField";
 import {
   User,
@@ -17,16 +18,29 @@ import hero from "../assets/kvXpeng.jpg";
 import logo from "../assets/logoXPENG.png";
 import { connectWS, sendWS } from "../services/ws";
 const categoryMap = {
-  vip: "VIP",
-  media: "MEDIA",
-  dealer: "DEALER",
-  partner: "PARTNER",
-  guest: "GUEST",
+  f7d92kLm: "SUPER VVIP",
+  g23dfplX2: "VVIP",
+  a8f7d92kLm: "VIP",
+  b9d2a11YpQ: "DEALER",
+  c7f8e55RtN: "MEDIA",
+  d4k9p31WsM: "COMMUNITY",
+  e2m7q88HxV: "PUBLIC",
+};
+const categoryTitleMap = {
+  "SUPER VVIP": "SUPER VVIP INVITATION",
+  "VVIP": "VVIP INVITATION",
+  "VIP": "VIP INVITATION",
+  "DEALER": "DEALER INVITATION",
+  "MEDIA": "MEDIA INVITATION",
+  "COMMUNITY": "COMMUNITY INVITATION",
+  "PUBLIC": "PUBLIC INVITATION",
 };
 
 export default function Reservation() {
   const navigate = useNavigate();
-  const category = "VIP";
+  const queryParams = new URLSearchParams(window.location.search);
+  const token = queryParams.get("c");
+  const category = categoryMap[token] || null;
   const [loading, setLoading] = createSignal(false);
   const [form, setForm] = createSignal({
     name: "",
@@ -40,70 +54,71 @@ export default function Reservation() {
   onMount(() => {
     connectWS();
   });
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (loading()) return;
+    if (loading()) return;
 
-  setLoading(true);
+    setLoading(true);
 
-  const payload = {
-    action: "REGISTER",
-    payload: {
-      name: form().name,
-      email: form().email,
-      company: form().company,
-      category,
-      password: MD5(
-        `${form().email}-${Date.now()}`
-      ).toString(),
-      sendEmail: false,
-    },
-  };
+    const payload = {
+      action: "REGISTER",
+      payload: {
+        name: form().name,
+        email: form().email,
+        company: form().company,
+        category,
+        password: MD5(`${form().email}-${Date.now()}`).toString(),
+        sendEmail: false,
+      },
+    };
 
-  try {
-    console.time("REGISTER");
+    try {
+      console.time("REGISTER");
 
-    const rawResponse = await sendWS(payload);
+      const rawResponse = await sendWS(payload);
 
-    console.timeEnd("REGISTER");
+      console.timeEnd("REGISTER");
 
-    console.log("RAW RESPONSE:", rawResponse);
-    console.log("TYPE:", typeof rawResponse);
+      console.log("RAW RESPONSE:", rawResponse);
+      console.log("TYPE:", typeof rawResponse);
 
-    const response =
-      typeof rawResponse === "string"
-        ? JSON.parse(rawResponse)
-        : rawResponse;
+      const response =
+        typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
 
-    console.log("PARSED RESPONSE:", response);
+      console.log("PARSED RESPONSE:", response);
 
-    if (
-      response?.status === "success" &&
-      response?.type === "registered"
-    ) {
-      console.log("BEFORE NAVIGATE");
+      if (response?.status === "success" && response?.type === "registered") {
+        console.log("BEFORE NAVIGATE");
 
-      navigate(
-        `/success?qr=${encodeURIComponent(
-          response.data.qrCodeFilePath
-        )}&userId=${response.data.userId}`
-      );
+        navigate(
+          `/success?qr=${encodeURIComponent(
+            response.data.qrCodeFilePath,
+          )}&userId=${response.data.userId}`,
+        );
 
-      console.log("AFTER NAVIGATE");
-    } else {
-      console.error(
-        "Unexpected response:",
-        response
-      );
+        console.log("AFTER NAVIGATE");
+      } else {
+        console.error("Unexpected response:", response);
+      }
+    } catch (err) {
+      console.error("REGISTER ERROR:", err);
+      alert("Registration failed");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("REGISTER ERROR:", err);
-    alert("Registration failed");
-  } finally {
-    setLoading(false);
+  };
+  if (!category) {
+    return (
+      <div class="min-h-screen bg-black flex items-center justify-center text-white">
+        <div class="text-center">
+          <h1 class="text-4xl font-bold">Invalid Invitation Link</h1>
+
+          <p class="mt-4 text-zinc-400">Please use a valid invitation URL.</p>
+        </div>
+      </div>
+    );
   }
-};
 
   return (
     <div class="min-h-screen bg-black py-10 px-4">
@@ -165,7 +180,7 @@ const handleSubmit = async (e) => {
         <div class="relative overflow-hidden px-8 py-12 md:px-12 bg-[radial-gradient(circle_at_top_right,rgba(216,255,36,.08),transparent_25%),#030303]">
           <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-[#D8FF24]/10 rounded-full blur-[180px] pointer-events-none" />
           <h2 class="text-4xl md:text-5xl font-bold tracking-wide text-white">
-            CONFIRM YOUR ATTENDANCE
+            {categoryTitleMap[category]}
           </h2>
           <p class="mt-3 text-zinc-300 text-lg">
             Please fill in your details below to confirm your attendance

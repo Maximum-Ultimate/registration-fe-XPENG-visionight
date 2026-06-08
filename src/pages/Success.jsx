@@ -13,9 +13,10 @@ export default function Success() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const qr = params.get("qr");
+  const uniqueId = qr?.split("/").pop()?.replace(".png", "");
   const userId = params.get("userId");
   const qrUrl = qr
-    ? `http://localhost:3610/${qr}`
+    ? `https://cloud.xpengvisionnight.co.id/${qr}`
     : null;
 
   return (
@@ -109,7 +110,7 @@ export default function Success() {
                   Registration ID
                 </p>
                 <p class="text-[#D8FF24] font-semibold">
-                  XPVN{userId }
+                  {uniqueId}
                 </p>
               </div>
             </div>
