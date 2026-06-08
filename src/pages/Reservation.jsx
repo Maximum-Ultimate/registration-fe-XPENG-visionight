@@ -26,6 +26,7 @@ const categoryMap = {
   d4k9p31WsM: "COMMUNITY",
   e2m7q88HxV: "PUBLIC",
 };
+
 const categoryTitleMap = {
   "SUPER VVIP": "SUPER VVIP INVITATION",
   "VVIP": "VVIP INVITATION",
@@ -69,7 +70,7 @@ export default function Reservation() {
         company: form().company,
         category,
         password: MD5(`${form().email}-${Date.now()}`).toString(),
-        sendEmail: false,
+        sendEmail: true,
       },
     };
 
