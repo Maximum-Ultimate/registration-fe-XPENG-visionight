@@ -2,7 +2,9 @@ let ws = null;
 
 export function connectWS() {
   if (ws) return ws;
+
   ws = new WebSocket("wss://cloud.xpengvisionnight.co.id/");
+
   return ws;
 }
 
@@ -12,23 +14,29 @@ export function sendWS(data) {
       reject(new Error("WebSocket not connected"));
       return;
     }
-
     const handler = (event) => {
       const message = JSON.parse(event.data);
 
       console.log("WS MESSAGE:", message);
 
+      // hanya tangkap response REGISTER
       if (
-        message.status === "success" &&
-        message.type === "registered"
+        message.type !== "registered" &&
+        message.status !== "error"
       ) {
-        ws.removeEventListener("message", handler);
-        resolve(message);
+        return;
       }
+
+      ws.removeEventListener("message", handler);
+
+      if (message.status === "error") {
+        reject(new Error(message.message));
+        return;
+      }
+
+      resolve(message);
     };
-
     ws.addEventListener("message", handler);
-
     ws.send(JSON.stringify(data));
   });
 }

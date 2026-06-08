@@ -1,7 +1,7 @@
 import { useParams } from "@solidjs/router";
 import { createSignal, onMount, onCleanup } from "solid-js";
 
-import { CalendarDays, MapPin, Bell, CheckCircle2 } from "lucide-solid";
+import { CalendarDays, MapPin, Bell, CheckCircle2, Timer } from "lucide-solid";
 
 import hero from "../assets/kvXpeng.jpg";
 import logo from "../assets/logoXPENG.png";
@@ -17,7 +17,6 @@ export default function RSVP() {
 
   onMount(() => {
     ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");
-
     ws.onopen = () => {
       ws.send(
         JSON.stringify({
@@ -28,10 +27,8 @@ export default function RSVP() {
         }),
       );
     };
-
     ws.onmessage = (event) => {
       const response = JSON.parse(event.data);
-
       if (response.type === "user-detail") {
         setUser(response.data);
 
@@ -41,7 +38,6 @@ export default function RSVP() {
 
         setLoading(false);
       }
-
       if (response.type === "confirmation-success") {
         setConfirmed(true);
 
@@ -54,7 +50,6 @@ export default function RSVP() {
           }),
         );
       }
-
       if (response.status === "error") {
         setLoading(false);
         alert(response.message);
@@ -106,9 +101,7 @@ export default function RSVP() {
             </h1>
 
             <p class="mt-4 text-[#D8FF24] text-sm md:text-xl uppercase">
-              Exploring The Future
-              <br />
-              Of Intelligent Mobility
+              AI TRANSFORMS THE WORLD
             </p>
           </div>
         </div>
@@ -224,28 +217,28 @@ export default function RSVP() {
               )}
 
               {/* REMINDER */}
-
               <div class="mt-10 border border-white/10 bg-white/5 rounded-xl p-5">
                 <div class="flex gap-5 items-start">
                   <Bell size={30} class="text-[#D8FF24]" />
-
                   <div>
                     <h4 class="font-bold text-xl">EVENT REMINDER</h4>
 
                     <div class="mt-3 space-y-2 text-zinc-300">
                       <div class="flex items-center gap-2">
                         <CalendarDays size={16} />
-
-                        <span>27 June 2026</span>
+                        <span>28 June 2024</span>
                       </div>
 
                       <div class="flex items-center gap-2">
                         <MapPin size={16} />
-
                         <span>The Kasablanka Hall, Jakarta</span>
                       </div>
+                      <div class="flex items-center gap-2">
+                        <Timer size={16} />
+                          <span>Time : 14.00 - 21.00 WIB</span>
+                      </div>
 
-                      <div>Time : 18.00 WIB</div>
+                    
                     </div>
                   </div>
                 </div>

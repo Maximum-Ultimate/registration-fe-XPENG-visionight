@@ -176,23 +176,10 @@ export default function Reservation() {
     };
 
     try {
-      console.time("REGISTER");
-
       const rawResponse = await sendWS(payload);
-
-      console.timeEnd("REGISTER");
-
-      console.log("RAW RESPONSE:", rawResponse);
-      console.log("TYPE:", typeof rawResponse);
-
       const response =
         typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
-
-      console.log("PARSED RESPONSE:", response);
-
       if (response?.status === "success" && response?.type === "registered") {
-        console.log("BEFORE NAVIGATE");
-
         await Swal.fire({
           icon: "success",
           title: "Registration Successful",
@@ -207,13 +194,21 @@ export default function Reservation() {
             response.data.qrCodeFilePath,
           )}&userId=${response.data.userId}`,
         );
-
-        console.log("AFTER NAVIGATE");
       } else {
-        console.error("Unexpected response:", response);
+        await Swal.fire({
+          icon: "error",
+          title: "Registration Failed",
+          text:
+            response?.message ||
+            response?.error ||
+            "An unexpected error occurred.",
+          confirmButtonColor: "#D8FF24",
+          background: "#111111",
+          color: "#ffffff",
+        });
       }
+     
     } catch (err) {
-      console.error("REGISTER ERROR:", err);
       Swal.fire({
         icon: "error",
         title: "Registration Failed",
@@ -237,7 +232,6 @@ export default function Reservation() {
       </div>
     );
   }
-
   return (
     <div class="min-h-screen bg-black py-10 px-4">
       <div class="max-w-[1180px] mx-auto overflow-hidden rounded-2xl border border-white/10 bg-black">
@@ -267,9 +261,7 @@ export default function Reservation() {
               </h1>
 
               <p class="mt-3 md:mt-6 text-[#D8FF24] text-lg sm:text-xl md:text-2xl lg:text-3xl font-medium uppercase leading-tight">
-                EXPLORING THE FUTURE
-                <br />
-                OF INTELLIGENT MOBILITY
+                AI TRANSFORMS THE WORLD
               </p>
 
               <div class="mt-4 md:mt-6 w-16 md:w-24 h-[2px] bg-[#D8FF24]" />
@@ -279,7 +271,7 @@ export default function Reservation() {
                   <CalendarDays size={20} class="text-[#D8FF24] shrink-0" />
 
                   <span class="text-white text-sm sm:text-base md:text-xl lg:text-2xl font-medium">
-                    27 - 28 June 2024 | 18.00 WIB
+                    28 June 2024 | 14.00 - 21.00 WIB
                   </span>
                 </div>
 

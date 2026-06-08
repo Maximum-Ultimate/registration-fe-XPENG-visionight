@@ -48,9 +48,7 @@ export default function Success() {
               VISION NIGHT
             </h1>
             <p class="mt-4 text-[#D8FF24] text-sm md:text-2xl uppercase font-medium">
-              EXPLORING THE FUTURE
-              <br />
-              OF INTELLIGENT MOBILITY
+              AI TRANSFORMS THE WORLD
             </p>
             <div class="mt-4 w-20 h-[2px] bg-[#D8FF24]" />
             <div class="mt-4 space-y-2">
@@ -60,7 +58,7 @@ export default function Success() {
                   class="text-[#D8FF24]"
                 />
                 <span>
-                  27 - 28 June 2024 
+                  28 June 2024 | 14.00 - 21.00 WIB
                 </span>
               </div>
               <div class="flex items-center gap-2 text-white">
@@ -130,9 +128,9 @@ export default function Success() {
                 </h4>
                 <div class="mt-2 text-zinc-300 space-y-1">
                   <p>
-                    Date : 27 - 28 June 2024
+                    Date : 28 June 2024
                   </p>
-                  <p>Time : 18.00 WIB</p>
+                  <p>Time : 14.00 - 21.00 WIB</p>
                   <p>
                     Venue : Istora Senayan,
                     Jakarta
