@@ -71,6 +71,7 @@ export default function Reservation() {
         category,
         password: MD5(`${form().email}-${Date.now()}`).toString(),
         sendEmail: true,
+        status_confirmation: "confirmed",
       },
     };
 
