@@ -276,7 +276,7 @@ export default function RSVP() {
                     <div class="mt-3 space-y-2 text-zinc-300">
                       <div class="flex items-center gap-2">
                         <CalendarDays size={16} />
-                        <span>28 June 2024</span>
+                        <span>28 June 2026</span>
                       </div>
 
                       <div class="flex items-center gap-2">

@@ -58,7 +58,7 @@ export default function Success() {
                   class="text-[#D8FF24]"
                 />
                 <span>
-                  28 June 2024 | 14.00 - 21.00 WIB
+                  28 June 2026 | 14.00 - 21.00 WIB
                 </span>
               </div>
               <div class="flex items-center gap-2 text-white">
@@ -128,7 +128,7 @@ export default function Success() {
                 </h4>
                 <div class="mt-2 text-zinc-300 space-y-1">
                   <p>
-                    Date : 28 June 2024
+                    Date : 28 June 2026
                   </p>
                   <p>Time : 14.00 - 21.00 WIB</p>
                   <p>

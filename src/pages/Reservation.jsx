@@ -15,7 +15,7 @@ import {
   CalendarDays,
 } from "lucide-solid";
 import SelectField from "../components/SelectField";
-import hero from "../assets/kvXpeng.jpg";
+import hero from "../assets/generalInvite.jpg";
 import logo from "../assets/logoXPENG.png";
 import { connectWS, sendWS } from "../services/ws";
 const categoryMap = {
@@ -425,7 +425,7 @@ export default function Reservation() {
               <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-wide leading-none">
                 XPENG
                 <br />
-                VISION NIGHT
+                V1SION NIGHT
               </h1>
 
               <p class="mt-3 md:mt-6 text-[#D8FF24] text-lg sm:text-xl md:text-2xl lg:text-3xl font-medium uppercase leading-tight">
@@ -439,7 +439,7 @@ export default function Reservation() {
                   <CalendarDays size={20} class="text-[#D8FF24] shrink-0" />
 
                   <span class="text-white text-sm sm:text-base md:text-xl lg:text-2xl font-medium">
-                    28 June 2024 | 14.00 - 21.00 WIB
+                    28 June 2026 | 14.00 - 21.00 WIB
                   </span>
                 </div>
 
@@ -456,13 +456,11 @@ export default function Reservation() {
         </div>
         <div class="relative overflow-hidden px-8 py-12 md:px-12 bg-[radial-gradient(circle_at_top_right,rgba(216,255,36,.08),transparent_25%),#030303]">
           <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-[#D8FF24]/10 rounded-full blur-[180px] pointer-events-none" />
-          <h2 class="text-4xl md:text-5xl font-bold tracking-wide text-white">
+          {/* <h2 class="text-4xl md:text-5xl font-bold tracking-wide text-white">
             {categoryTitleMap[category]}
-          </h2>
+          </h2> */}
           <p class="mt-3 text-zinc-300 text-lg">
             Please fill in your details below to confirm your attendance
-          </p>
-          <p class="text-[#D8FF24] font-semibold uppercase mt-1">
             at XPENG VISION NIGHT.
           </p>
           <div class="mt-8 border border-[#D8FF24]/20 bg-[#D8FF24]/5 rounded-xl p-5">

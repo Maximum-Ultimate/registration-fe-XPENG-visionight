@@ -43,7 +43,7 @@ export default function Success() {
             <div class="mt-4 space-y-2">
               <div class="flex items-center gap-2 text-white">
                 <CalendarDays size={18} class="text-[#D8FF24]" />
-                <span> 28 June 2024 | 14.00 - 21.00 WIB</span>
+                <span> 28 June 2026 | 14.00 - 21.00 WIB</span>
                 
               </div>
               <div class="flex items-center gap-2 text-white">
@@ -96,7 +96,7 @@ export default function Success() {
               <div>
                 <h4 class="font-semibold text-xl">EVENT REMINDER</h4>
                 <div class="mt-2 text-zinc-300 space-y-1">
-                  <p>Date : 28 June 2024</p>
+                  <p>Date : 28 June 2026</p>
                   <p>Time : 14.00 - 21.00 WIB</p>
                   <p>Venue : Istora Senayan, Jakarta</p>
                 </div>
