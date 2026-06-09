@@ -36,12 +36,45 @@ const categoryTitleMap = {
   COMMUNITY: "COMMUNITY INVITATION",
   PUBLIC: "PUBLIC INVITATION",
 };
+const categoryConfig = {
+  "SUPER VVIP": {
+    maxCapacity: 8,
+    allowPlusOne: true,
+  },
+  VVIP: {
+    maxCapacity: 100,
+    allowPlusOne: true,
+  },
+  VIP: {
+    maxCapacity: 520,
+    allowPlusOne: false,
+  },
+  DEALER: {
+    maxCapacity: 824,
+    allowPlusOne: false,
+  },
+  MEDIA: {
+    maxCapacity: 74,
+    allowPlusOne: false,
+  },
+  COMMUNITY: {
+    maxCapacity: 638,
+    allowPlusOne: false,
+  },
+  PUBLIC: {
+    maxCapacity: 386,
+    allowPlusOne: false,
+  },
+};
+
 export default function Reservation() {
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(window.location.search);
   const token = queryParams.get("c");
   const category = categoryMap[token] || null;
+  const maxGuest = categoryConfig[category]?.allowPlusOne ? 1 : 0;
   const [loading, setLoading] = createSignal(false);
+  const [bringGuest, setBringGuest] = createSignal(false);
   const [form, setForm] = createSignal({
     name: "",
     email: "",
@@ -54,6 +87,13 @@ export default function Reservation() {
   onMount(() => {
     connectWS();
   });
+  const [guest, setGuest] = createSignal({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+  });
+
   const validateForm = () => {
     if (!form().name.trim()) {
       Swal.fire({
@@ -66,7 +106,6 @@ export default function Reservation() {
       });
       return false;
     }
-
     if (!form().email.trim()) {
       Swal.fire({
         icon: "warning",
@@ -100,7 +139,6 @@ export default function Reservation() {
       });
       return false;
     }
-
     if (!/^[0-9]+$/.test(form().phone)) {
       Swal.fire({
         icon: "error",
@@ -112,7 +150,6 @@ export default function Reservation() {
       });
       return false;
     }
-
     if (!form().company.trim()) {
       Swal.fire({
         icon: "warning",
@@ -124,7 +161,6 @@ export default function Reservation() {
       });
       return false;
     }
-
     if (!form().jobTitle.trim()) {
       Swal.fire({
         icon: "warning",
@@ -136,7 +172,6 @@ export default function Reservation() {
       });
       return false;
     }
-
     if (!form().city.trim()) {
       Swal.fire({
         icon: "warning",
@@ -147,6 +182,67 @@ export default function Reservation() {
         color: "#ffffff",
       });
       return false;
+    }
+    if (maxGuest > 0) {
+      if (!guest().name.trim()) {
+        Swal.fire({
+          icon: "warning",
+          title: "Guest Name Required",
+          text: "Please enter guest full name.",
+          confirmButtonColor: "#D8FF24",
+          background: "#111111",
+          color: "#ffffff",
+        });
+        return false;
+      }
+
+      if (!guest().email.trim()) {
+        Swal.fire({
+          icon: "warning",
+          title: "Guest Email Required",
+          text: "Please enter guest email address.",
+          confirmButtonColor: "#D8FF24",
+          background: "#111111",
+          color: "#ffffff",
+        });
+        return false;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest().email.trim())) {
+        Swal.fire({
+          icon: "error",
+          title: "Invalid Guest Email",
+          text: "Please enter a valid guest email address.",
+          confirmButtonColor: "#D8FF24",
+          background: "#111111",
+          color: "#ffffff",
+        });
+        return false;
+      }
+
+      if (!guest().phone.trim()) {
+        Swal.fire({
+          icon: "warning",
+          title: "Guest Phone Required",
+          text: "Please enter guest phone number.",
+          confirmButtonColor: "#D8FF24",
+          background: "#111111",
+          color: "#ffffff",
+        });
+        return false;
+      }
+
+      if (!/^[0-9]+$/.test(guest().phone)) {
+        Swal.fire({
+          icon: "error",
+          title: "Invalid Guest Phone Number",
+          text: "Guest phone number must contain numbers only.",
+          confirmButtonColor: "#D8FF24",
+          background: "#111111",
+          color: "#ffffff",
+        });
+        return false;
+      }
     }
 
     return true;
@@ -159,20 +255,45 @@ export default function Reservation() {
     if (loading()) return;
     setLoading(true);
     const payload = {
-      action: "REGISTER",
-      payload: {
-        name: form().name,
-        email: form().email,
-        phone: form().phone,
-        company: form().company,
-        position: form().jobTitle,
-        city: form().city,
-        source: form().source,
-        category,
-        password: MD5(`${form().email}-${Date.now()}`).toString(),
-        sendEmail: true,
-        status_confirmation: "confirmed",
-      },
+      action: maxGuest > 0 ? "REGISTER_PLUS_ONE" : "REGISTER",
+      payload:
+        maxGuest > 0
+          ? {
+              primary: {
+                name: form().name,
+                email: form().email,
+                phone: form().phone,
+                company: form().company,
+                position: form().jobTitle,
+                city: form().city,
+                source: form().source,
+                category,
+                password: MD5(`${form().email}-${Date.now()}`).toString(),
+                status_confirmation: "confirmed",
+              },
+
+              guest: {
+                name: guest().name,
+                email: guest().email,
+                phone: guest().phone,
+                company: guest().company,
+              },
+
+              sendEmail: true,
+            }
+          : {
+              name: form().name,
+              email: form().email,
+              phone: form().phone,
+              company: form().company,
+              position: form().jobTitle,
+              city: form().city,
+              source: form().source,
+              category,
+              password: MD5(`${form().email}-${Date.now()}`).toString(),
+              sendEmail: true,
+              status_confirmation: "confirmed",
+            },
     };
 
     try {
@@ -189,11 +310,19 @@ export default function Reservation() {
           color: "#ffffff",
         });
 
-        navigate(
-          `/success?qr=${encodeURIComponent(
-            response.data.qrCodeFilePath,
-          )}&userId=${response.data.userId}`,
-        );
+        if (response.type === "registered-plus-one") {
+          navigate(
+            `/success?primaryQr=${encodeURIComponent(response.data.primaryQrPath)}
+      &guestQr=${encodeURIComponent(response.data.guestQrPath)}
+      &primaryUserId=${response.data.primaryUserId}
+      &guestUserId=${response.data.guestUserId}`,
+          );
+        } else {
+          navigate(
+            `/success?qr=${encodeURIComponent(response.data.qrCodeFilePath)}
+      &userId=${response.data.userId}`,
+          );
+        }
       } else {
         await Swal.fire({
           icon: "error",
@@ -207,7 +336,6 @@ export default function Reservation() {
           color: "#ffffff",
         });
       }
-     
     } catch (err) {
       Swal.fire({
         icon: "error",
@@ -221,12 +349,12 @@ export default function Reservation() {
       setLoading(false);
     }
   };
+
   if (!category) {
     return (
       <div class="min-h-screen bg-black flex items-center justify-center text-white">
         <div class="text-center">
           <h1 class="text-4xl font-bold">Invalid Invitation Link</h1>
-
           <p class="mt-4 text-zinc-400">Please use a valid invitation URL.</p>
         </div>
       </div>
@@ -286,7 +414,6 @@ export default function Reservation() {
             </div>
           </div>
         </div>
-
         <div class="relative overflow-hidden px-8 py-12 md:px-12 bg-[radial-gradient(circle_at_top_right,rgba(216,255,36,.08),transparent_25%),#030303]">
           <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-[#D8FF24]/10 rounded-full blur-[180px] pointer-events-none" />
           <h2 class="text-4xl md:text-5xl font-bold tracking-wide text-white">
@@ -410,6 +537,93 @@ export default function Reservation() {
                 ]}
               />
             </div>
+            {maxGuest > 0 && (
+              <div class="mt-10 border border-[#D8FF24]/20 bg-[#D8FF24]/5 rounded-xl p-6">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-[#D8FF24] text-xl font-bold">
+                      ADDITIONAL GUEST
+                    </h3>
+
+                    <p class="text-zinc-400 mt-1">
+                      This invitation allows 1 additional guest.
+                    </p>
+                  </div>
+
+                  <label class="flex items-center gap-3 cursor-pointer">
+                    <span class="text-white text-sm">Bring Guest</span>
+
+                    <input
+                      type="checkbox"
+                      checked={bringGuest()}
+                      onChange={(e) => setBringGuest(e.currentTarget.checked)}
+                      class="w-5 h-5 accent-[#D8FF24]"
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+            {maxGuest > 0 && bringGuest() && (
+              <div class="mt-10 border border-[#D8FF24]/20 bg-[#D8FF24]/5 rounded-xl p-6">
+                <h3 class="text-[#D8FF24] text-xl font-bold">PLUS ONE GUEST</h3>
+
+                <p class="text-zinc-400 mt-2">
+                  Your invitation includes 1 additional guest.
+                </p>
+
+                <div class="grid md:grid-cols-2 gap-6 mt-6">
+                  <InputField
+                    label="GUEST FULL NAME"
+                    icon={User}
+                    value={guest().name}
+                    onInput={(e) =>
+                      setGuest({
+                        ...guest(),
+                        name: e.currentTarget.value,
+                      })
+                    }
+                  />
+
+                  <InputField
+                    label="GUEST EMAIL"
+                    icon={Mail}
+                    value={guest().email}
+                    onInput={(e) =>
+                      setGuest({
+                        ...guest(),
+                        email: e.currentTarget.value,
+                      })
+                    }
+                  />
+
+                  <InputField
+                    label="GUEST PHONE"
+                    icon={Phone}
+                    value={guest().phone}
+                    onInput={(e) =>
+                      setGuest({
+                        ...guest(),
+                        phone: e.currentTarget.value
+                          .replace(/\D/g, "")
+                          .slice(0, 15),
+                      })
+                    }
+                  />
+
+                  <InputField
+                    label="GUEST COMPANY"
+                    icon={Building2}
+                    value={guest().company}
+                    onInput={(e) =>
+                      setGuest({
+                        ...guest(),
+                        company: e.currentTarget.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"

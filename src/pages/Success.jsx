@@ -11,6 +11,9 @@ export default function Success() {
   const uniqueId = qr?.split("/").pop()?.replace(".png", "");
   const userId = params.get("userId");
   const qrUrl = qr ? `https://cloud.xpengvisionnight.co.id/${qr}` : null;
+  const primaryQr = params.get("primaryQr");
+  const guestQr = params.get("guestQr");
+  const hasGuest = !!guestQr;
 
   return (
     <div class="min-h-screen bg-black shadow-2xl py-8 px-4">
@@ -44,7 +47,6 @@ export default function Success() {
               <div class="flex items-center gap-2 text-white">
                 <CalendarDays size={18} class="text-[#D8FF24]" />
                 <span> 28 June 2024 | 14.00 - 21.00 WIB</span>
-                
               </div>
               <div class="flex items-center gap-2 text-white">
                 <MapPin size={18} class="text-[#D8FF24]" />
@@ -67,6 +69,24 @@ export default function Success() {
               <Mail size={60} class="mx-auto text-[#D8FF24]" />
 
               <h3 class="mt-5 text-2xl font-bold">CHECK YOUR EMAIL</h3>
+              {hasGuest && (
+                <div class="max-w-2xl mx-auto mt-8">
+                  <div class="bg-white/5 border border-[#D8FF24]/20 rounded-2xl p-6">
+                    <h3 class="text-[#D8FF24] text-xl font-bold">
+                      ADDITIONAL GUEST REGISTERED
+                    </h3>
+
+                    <p class="mt-3 text-zinc-300">
+                      Your RSVP includes 1 additional guest.
+                    </p>
+
+                    <div class="mt-4 space-y-2 text-zinc-400">
+                      <p>✓ Primary Guest Registered</p>
+                      <p>✓ Additional Guest Registered</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <p class="mt-4 text-zinc-300 leading-relaxed">
                 Thank you for registering for XPENG Vision Night.
