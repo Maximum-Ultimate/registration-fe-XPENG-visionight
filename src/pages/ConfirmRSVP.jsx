@@ -88,13 +88,13 @@ export default function RSVP() {
           <img
             src={hero}
             alt=""
-            class="w-full h-[250px] md:h-[320px] object-cover"
+            class="w-full h-[180px] sm:h-[220px] md:h-[320px] object-cover"
           />
 
           <div class="absolute inset-0 bg-black/60" />
 
           <div class="absolute left-6 md:left-10 top-1/2 -translate-y-1/2">
-            <h1 class="text-4xl md:text-6xl font-bold leading-none">
+            <h1 class="text-2xl sm:text-4xl md:text-6xl font-bold">
               XPENG
               <br />
               VISION NIGHT
@@ -146,71 +146,121 @@ export default function RSVP() {
               </div>
 
               {/* USER CARD */}
-
-              <div class="mt-10 bg-white/5 rounded-2xl p-6 border border-white/10 backdrop-blur-sm">
+              <div class="mt-10">
                 <div
-                  class={
-                    confirmed()
-                      ? "grid md:grid-cols-[1fr_260px] gap-8 items-center"
-                      : ""
-                  }
+                  class={`grid gap-6 ${
+                    user()?.guest ? "lg:grid-cols-2" : "max-w-md mx-auto"
+                  }`}
                 >
-                  {/* QR FIRST ON MOBILE */}
-                  {confirmed() && (
-                    <div class="text-center order-1 md:order-2">
-                      <h3 class="text-[#D8FF24] text-sm font-semibold uppercase tracking-widest mb-4">
-                        EVENT QR CODE
-                      </h3>
-
-                      <img
-                        src={`https://cloud.xpengvisionnight.co.id/${user().qr_code}`}
-                        alt="QR Code"
-                        class="w-56 h-56 mx-auto bg-white p-3 rounded-xl"
-                      />
-
-                      <p class="mt-4 text-zinc-400 text-sm">Registration ID</p>
-
-                      <p class="text-[#D8FF24] font-semibold break-all">
-                        {user().uniqueId}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* USER DATA */}
-                  <div class="space-y-5 order-2 md:order-1">
-                    <div>
-                      <span class="text-zinc-400">Name</span>
-
-                      <p class="font-semibold text-lg">{user().name}</p>
+                  {/* PRIMARY TICKET */}
+                  <div class="rounded-3xl border border-[#D8FF24]/20 bg-white/[0.03] backdrop-blur-md overflow-hidden">
+                    <div class="bg-[#D8FF24] text-black px-5 py-3 font-bold tracking-wider text-center">
+                      PRIMARY GUEST
                     </div>
 
-                    <div>
-                      <span class="text-zinc-400">Email</span>
+                    <div class="p-6 text-center">
+                      {confirmed() && (
+                        <img
+                          src={`https://cloud.xpengvisionnight.co.id/${user().qr_code}`}
+                          alt="Primary QR"
+                          class="w-52 h-52 mx-auto bg-white rounded-2xl p-3"
+                        />
+                      )}
 
-                      <p class="font-semibold">{user().email}</p>
-                    </div>
+                      <h3 class="mt-5 text-2xl font-bold">{user().name}</h3>
 
-                    <div>
-                      <span class="text-zinc-400">Company</span>
+                      <p class="text-zinc-400 mt-1">{user().company}</p>
 
-                      <p class="font-semibold">{user().company}</p>
-                    </div>
+                      <div class="mt-6 space-y-4 text-left">
+                        <div>
+                          <p class="text-zinc-500 text-sm">Email</p>
+                          <p>{user().email}</p>
+                        </div>
 
-                    <div>
-                      <span class="text-zinc-400">Category</span>
+                        <div>
+                          <p class="text-zinc-500 text-sm">Category</p>
+                          <p class="text-[#D8FF24] font-semibold">
+                            {user().category}
+                          </p>
+                        </div>
 
-                      <p class="font-semibold">{user().category}</p>
+                        {confirmed() && (
+                          <div>
+                            <p class="text-zinc-500 text-sm">Registration ID</p>
+                            <p class="break-all text-sm">{user().uniqueId}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  {/* GUEST TICKET */}
+                  {user()?.guest && (
+                    <div class="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-md overflow-hidden">
+                      <div class="bg-white text-black px-5 py-3 font-bold tracking-wider text-center">
+                        ADDITIONAL GUEST
+                      </div>
+
+                      <div class="p-6 text-center">
+                        {confirmed() && (
+                          <img
+                            src={`https://cloud.xpengvisionnight.co.id/${user().guest.qr_code}`}
+                            alt="Guest QR"
+                            class="w-52 h-52 mx-auto bg-white rounded-2xl p-3"
+                          />
+                        )}
+
+                        <h3 class="mt-5 text-2xl font-bold">
+                          {user().guest.name}
+                        </h3>
+
+                        <p class="text-zinc-400 mt-1">{user().guest.company}</p>
+
+                        <div class="mt-6 space-y-4 text-left">
+                          <div>
+                            <p class="text-zinc-500 text-sm">Email</p>
+                            <p>{user().guest.email}</p>
+                          </div>
+
+                          <div>
+                            <p class="text-zinc-500 text-sm">Category</p>
+                            <p>{user().guest.category}</p>
+                          </div>
+
+                          {confirmed() && (
+                            <div>
+                              <p class="text-zinc-500 text-sm">
+                                Registration ID
+                              </p>
+                              <p class="break-all text-sm">
+                                {user().guest.uniqueId}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-
               {/* BUTTON */}
 
               {!confirmed() && (
                 <button
                   onClick={confirmAttendance}
-                  class="w-full mt-8 bg-[#D8FF24] hover:bg-[#c5ef00] transition text-black font-bold py-4 rounded-xl text-lg"
+                  class="
+                  w-full mt-8
+                  bg-[#D8FF24]
+                  text-black
+                  font-bold
+                  py-5
+                  rounded-2xl
+                  text-lg
+                  tracking-wide
+                  shadow-[0_0_30px_rgba(216,255,36,.35)]
+                  hover:scale-[1.01]
+                  transition-all
+                  "
                 >
                   CONFIRM ATTENDANCE
                 </button>
@@ -231,14 +281,12 @@ export default function RSVP() {
 
                       <div class="flex items-center gap-2">
                         <MapPin size={16} />
-                        <span>The Kasablanka Hall, Jakarta</span>
+                        <span>Istora Senayan, Jakarta</span>
                       </div>
                       <div class="flex items-center gap-2">
                         <Timer size={16} />
-                          <span>Time : 14.00 - 21.00 WIB</span>
+                        <span>Time : 14.00 - 21.00 WIB</span>
                       </div>
-
-                    
                     </div>
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import { createSignal, onMount } from "solid-js";
+import { createSignal, onMount, onCleanup } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import MD5 from "crypto-js/md5";
 import Swal from "sweetalert2";
@@ -39,19 +39,19 @@ const categoryTitleMap = {
 const categoryConfig = {
   "SUPER VVIP": {
     maxCapacity: 8,
-    allowPlusOne: true,
+    allowPlusOne: false,
   },
   VVIP: {
     maxCapacity: 100,
-    allowPlusOne: true,
+    allowPlusOne: false,
   },
   VIP: {
     maxCapacity: 520,
-    allowPlusOne: false,
+    allowPlusOne: true,
   },
   DEALER: {
     maxCapacity: 824,
-    allowPlusOne: false,
+    allowPlusOne: true,
   },
   MEDIA: {
     maxCapacity: 74,
@@ -59,11 +59,11 @@ const categoryConfig = {
   },
   COMMUNITY: {
     maxCapacity: 638,
-    allowPlusOne: false,
+    allowPlusOne: true,
   },
   PUBLIC: {
     maxCapacity: 386,
-    allowPlusOne: false,
+    allowPlusOne: true,
   },
 };
 
@@ -75,6 +75,8 @@ export default function Reservation() {
   const maxGuest = categoryConfig[category]?.allowPlusOne ? 1 : 0;
   const [loading, setLoading] = createSignal(false);
   const [bringGuest, setBringGuest] = createSignal(false);
+  const [dealerList, setDealerList] = createSignal([]);
+  const [dealerId, setDealerId] = createSignal("");
   const [form, setForm] = createSignal({
     name: "",
     email: "",
@@ -84,8 +86,32 @@ export default function Reservation() {
     city: "",
     source: "",
   });
+  let ws;
   onMount(() => {
     connectWS();
+    const WS_URL =
+      window.location.hostname === "localhost"
+        ? "ws://localhost:3010"
+        : "wss://cloud.xpengvisionnight.co.id";
+
+    ws = new WebSocket(WS_URL);
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          action: "GET_DEALER_SEAT",
+        }),
+      );
+    };
+    ws.onmessage = (event) => {
+      const response = JSON.parse(event.data);
+      if (response.type === "dealer-seat") {
+        setDealerList(response.data);
+      }
+    };
+  });
+
+  onCleanup(() => {
+    ws?.close();
   });
   const [guest, setGuest] = createSignal({
     name: "",
@@ -183,7 +209,7 @@ export default function Reservation() {
       });
       return false;
     }
-    if (maxGuest > 0) {
+    if (maxGuest > 0 && bringGuest()) {
       if (!guest().name.trim()) {
         Swal.fire({
           icon: "warning",
@@ -244,7 +270,18 @@ export default function Reservation() {
         return false;
       }
     }
+    if (category === "DEALER" && !dealerId()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Dealer Required",
+        text: "Please select your dealer location.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
 
+      return false;
+    }
     return true;
   };
   const handleSubmit = async (e) => {
@@ -255,9 +292,9 @@ export default function Reservation() {
     if (loading()) return;
     setLoading(true);
     const payload = {
-      action: maxGuest > 0 ? "REGISTER_PLUS_ONE" : "REGISTER",
+      action: maxGuest > 0 && bringGuest() ? "REGISTER_PLUS_ONE" : "REGISTER",
       payload:
-        maxGuest > 0
+        maxGuest > 0 && bringGuest()
           ? {
               primary: {
                 name: form().name,
@@ -268,6 +305,7 @@ export default function Reservation() {
                 city: form().city,
                 source: form().source,
                 category,
+                dealer_id: Number(dealerId()),
                 password: MD5(`${form().email}-${Date.now()}`).toString(),
                 status_confirmation: "confirmed",
               },
@@ -290,6 +328,7 @@ export default function Reservation() {
               city: form().city,
               source: form().source,
               category,
+              dealer_id: Number(dealerId()),
               password: MD5(`${form().email}-${Date.now()}`).toString(),
               sendEmail: true,
               status_confirmation: "confirmed",
@@ -360,6 +399,7 @@ export default function Reservation() {
       </div>
     );
   }
+
   return (
     <div class="min-h-screen bg-black py-10 px-4">
       <div class="max-w-[1180px] mx-auto overflow-hidden rounded-2xl border border-white/10 bg-black">
@@ -485,6 +525,7 @@ export default function Reservation() {
 
               <InputField
                 label="COMPANY / ORGANIZATION"
+                required
                 icon={Building2}
                 placeholder="Enter company or organization"
                 value={form().company}
@@ -504,7 +545,6 @@ export default function Reservation() {
               <div>
                 <InputField
                   label="CITY"
-                  required
                   icon={MapPin}
                   placeholder="Enter your city"
                   value={form().city}
@@ -516,6 +556,118 @@ export default function Reservation() {
                   }
                 />
               </div>
+              {category === "DEALER" && (
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium mb-2 text-white">
+                    XPENG DEALER LOCATION
+                  </label>
+
+                  <select
+                    value={dealerId()}
+                    onChange={(e) => setDealerId(e.currentTarget.value)}
+                    class="w-full h-[58px] rounded-xl bg-black border border-white/10 px-4 text-white focus:border-[#D8FF24] focus:outline-none"
+                  >
+                    <option value="">Select Dealer Location</option>
+
+                    {dealerList().map((dealer) => (
+                      <option value={dealer.id}>{dealer.dealer_name}</option>
+                    ))}
+                  </select>
+
+                  {dealerId() &&
+                    (() => {
+                      const dealer = dealerList().find(
+                        (d) => String(d.id) === dealerId(),
+                      );
+
+                      if (!dealer) return null;
+
+                      const percentage =
+                        (dealer.used_seat / dealer.max_capacity) * 100;
+
+                      const seatColor =
+                        percentage >= 90
+                          ? "text-red-400"
+                          : percentage >= 70
+                            ? "text-yellow-400"
+                            : "text-[#D8FF24]";
+
+                      return (
+                        <div class="mt-5 rounded-2xl border border-[#D8FF24]/20 bg-[#D8FF24]/5 p-5 backdrop-blur-sm">
+                          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                            <div>
+                              <h4 class="text-white font-semibold text-lg">
+                                {dealer.dealer_name}
+                              </h4>
+
+                              <p class="text-zinc-400 text-sm">
+                                Dealer Seat Availability
+                              </p>
+                            </div>
+
+                            <div class={`font-bold text-lg ${seatColor}`}>
+                              {dealer.remaining_seat} Seats Left
+                            </div>
+                          </div>
+
+                          <div class="mt-5">
+                            <div class="flex justify-between text-xs text-zinc-400 mb-2">
+                              <span>Occupancy</span>
+                              <span>
+                                {dealer.used_seat} / {dealer.max_capacity}
+                              </span>
+                            </div>
+
+                            <div class="h-3 bg-white/10 rounded-full overflow-hidden">
+                              <div
+                                class={`h-full transition-all duration-500 ${
+                                  percentage >= 90
+                                    ? "bg-red-500"
+                                    : percentage >= 70
+                                      ? "bg-yellow-500"
+                                      : "bg-[#D8FF24]"
+                                }`}
+                                style={{
+                                  width: `${Math.min(percentage, 100)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div class="mt-4 grid grid-cols-3 gap-3">
+                            <div class="rounded-xl bg-black/20 border border-white/10 p-3 text-center">
+                              <div class="text-xs text-zinc-400">Capacity</div>
+                              <div class="text-lg font-bold text-white">
+                                {dealer.max_capacity}
+                              </div>
+                            </div>
+
+                            <div class="rounded-xl bg-black/20 border border-white/10 p-3 text-center">
+                              <div class="text-xs text-zinc-400">Used</div>
+                              <div class="text-lg font-bold text-white">
+                                {dealer.used_seat}
+                              </div>
+                            </div>
+
+                            <div class="rounded-xl bg-black/20 border border-white/10 p-3 text-center">
+                              <div class="text-xs text-zinc-400">Available</div>
+                              <div class={`text-lg font-bold ${seatColor}`}>
+                                {dealer.remaining_seat}
+                              </div>
+                            </div>
+                          </div>
+
+                          {dealer.remaining_seat <= 10 && (
+                            <div class="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-red-300 text-sm">
+                              ⚠️ Seats are almost full. Please complete your
+                              registration soon.
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                </div>
+              )}
             </div>
 
             <div class="mt-6">
