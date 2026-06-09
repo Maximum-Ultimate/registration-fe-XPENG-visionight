@@ -282,6 +282,25 @@ export default function Reservation() {
 
       return false;
     }
+    const selectedDealer = dealerList().find(
+      (d) => String(d.id) === dealerId(),
+    );
+    if (
+      category === "DEALER" &&
+      selectedDealer &&
+      selectedDealer.remaining_seat <= 0
+    ) {
+      Swal.fire({
+        icon: "error",
+        title: "Dealer Full",
+        text: "Selected dealer has reached maximum capacity.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+
+      return false;
+    }
     return true;
   };
   const handleSubmit = async (e) => {
@@ -459,10 +478,10 @@ export default function Reservation() {
           {/* <h2 class="text-4xl md:text-5xl font-bold tracking-wide text-white">
             {categoryTitleMap[category]}
           </h2> */}
-          <p class="mt-3 text-zinc-300 text-lg">
-            Please fill in your details below to confirm your attendance
-            at XPENG VISION NIGHT.
-          </p>
+          <p class="mt-3 text-zinc-300 text-2xl">
+            Please fill in your details below to confirm your attendance at 
+           <span className="text-[#D8FF24] font-bold uppercasetext-2xl">XPENG V1SION NIGHT</span>
+           </p>
           <div class="mt-8 border border-[#D8FF24]/20 bg-[#D8FF24]/5 rounded-xl p-5">
             <h3 class="text-[#D8FF24] font-semibold">IMPORTANT NOTICE</h3>
 
@@ -554,7 +573,7 @@ export default function Reservation() {
                   }
                 />
               </div>
-              {category === "DEALER" && (
+              {/* {category === "DEALER" && (
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium mb-2 text-white">
                     XPENG DEALER LOCATION
@@ -665,12 +684,38 @@ export default function Reservation() {
                       );
                     })()}
                 </div>
+              )} */}
+              {category === "DEALER" && (
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium mb-2 text-white">
+                    XPENG DEALER LOCATION
+                  </label>
+
+                  <select
+                    value={dealerId()}
+                    onChange={(e) => setDealerId(e.currentTarget.value)}
+                    class="w-full h-[58px] rounded-xl bg-black border border-white/10 px-4 text-white focus:border-[#D8FF24] focus:outline-none"
+                  >
+                    <option value="">Select Dealer Location</option>
+
+                    {dealerList().map((dealer) => (
+                      <option
+                        value={dealer.id}
+                        disabled={dealer.remaining_seat <= 0}
+                      >
+                        {dealer.dealer_name}
+
+                        {dealer.remaining_seat <= 0 ? " (FULL)" : ``}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
 
             <div class="mt-6">
               <SelectField
-                label="HOW DID YOU HEAR ABOUT XPENG VISION NIGHT? (OPTIONAL)"
+                label="HOW DID YOU HEAR ABOUT XPENG V1SION NIGHT? (OPTIONAL)"
                 icon={Megaphone}
                 value={form().source}
                 onChange={(e) =>

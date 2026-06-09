@@ -45,7 +45,7 @@ export default function Success() {
             <h1 class="text-3xl md:text-6xl font-bold leading-none">
               XPENG
               <br />
-              VISION NIGHT
+              V1SION NIGHT
             </h1>
             <p class="mt-4 text-[#D8FF24] text-sm md:text-2xl uppercase font-medium">
               AI TRANSFORMS THE WORLD
@@ -86,7 +86,7 @@ export default function Success() {
             </h2>
             <p class="mt-4 text-zinc-300 max-w-2xl mx-auto">
               We look forward to welcoming you at XPENG
-              VISION NIGHT. Please bring the QR Code
+              V1SION NIGHT. Please bring the QR Code
               below for event check-in.
             </p>
           </div>

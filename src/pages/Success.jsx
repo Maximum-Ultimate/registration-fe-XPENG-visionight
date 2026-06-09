@@ -34,7 +34,7 @@ export default function Success() {
             <h1 class="text-3xl md:text-6xl font-bold leading-none">
               XPENG
               <br />
-              VISION NIGHT
+              V1SION NIGHT
             </h1>
             <p class="mt-4 text-[#D8FF24] text-sm md:text-2xl uppercase font-medium">
               AI TRANSFORMS THE WORLD

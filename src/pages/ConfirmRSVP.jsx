@@ -97,7 +97,7 @@ export default function RSVP() {
             <h1 class="text-2xl sm:text-4xl md:text-6xl font-bold">
               XPENG
               <br />
-              VISION NIGHT
+              V1SION NIGHT
             </h1>
 
             <p class="mt-4 text-[#D8FF24] text-sm md:text-xl uppercase">
@@ -126,7 +126,7 @@ export default function RSVP() {
 
                     <p class="mt-4 text-zinc-400 max-w-xl mx-auto">
                       Please review your information below and confirm your
-                      attendance for XPENG Vision Night.
+                      attendance for XPENG V1SION NIGHT.
                     </p>
                   </>
                 ) : (
@@ -139,7 +139,7 @@ export default function RSVP() {
 
                     <p class="mt-4 text-zinc-300 max-w-xl mx-auto">
                       Thank you for confirming your attendance. We look forward
-                      to welcoming you at XPENG Vision Night.
+                      to welcoming you at XPENG V1SION NIGHT.
                     </p>
                   </>
                 )}
