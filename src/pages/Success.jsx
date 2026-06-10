@@ -3,6 +3,8 @@ import { CheckCircle2, Bell, CalendarDays, MapPin, Mail } from "lucide-solid";
 
 import hero from "../assets/kvXpeng.jpg";
 import logo from "../assets/logoXPENG.png";
+import heroRegular from "../assets/INV-NONVIP-XVN.jpeg";
+import heroVIP from "../assets/INV-VIP-XVN.jpeg";
 
 export default function Success() {
   const location = useLocation();
@@ -11,6 +13,10 @@ export default function Success() {
   const uniqueId = qr?.split("/").pop()?.replace(".png", "");
   const userId = params.get("userId");
   const qrUrl = qr ? `https://cloud.xpengvisionnight.co.id/${qr}` : null;
+  const category = params.get("category");
+  const isVIP = category === "VIP";
+  const heroImage = isVIP ? heroVIP : heroRegular;
+  const eventTime = isVIP ? "17.00 - 21.00 WIB" : "14.00 - 21.00 WIB";
 
   return (
     <div class="min-h-screen bg-black shadow-2xl py-8 px-4">
@@ -25,7 +31,7 @@ export default function Success() {
         {/* HERO */}
         <div class="relative">
           <img
-            src={hero}
+            src={heroImage}
             alt="Hero"
             class="w-full h-[220px] md:h-[320px] object-cover"
           />
@@ -39,18 +45,17 @@ export default function Success() {
             <p class="mt-4 text-[#D8FF24] text-sm md:text-2xl uppercase font-medium">
               AI TRANSFORMS THE WORLD
             </p>
-            <div class="mt-4 w-20 h-[2px] bg-[#D8FF24]" />
+            {/* <div class="mt-4 w-20 h-[2px] bg-[#D8FF24]" />
             <div class="mt-4 space-y-2">
               <div class="flex items-center gap-2 text-white">
                 <CalendarDays size={18} class="text-[#D8FF24]" />
-                <span> 28 June 2026 | 14.00 - 21.00 WIB</span>
-                
+                <span> 28 June 2026 | {eventTime}</span>
               </div>
               <div class="flex items-center gap-2 text-white">
                 <MapPin size={18} class="text-[#D8FF24]" />
                 <span>Istora Senayan, Jakarta</span>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
         {/* CONTENT */}
@@ -69,7 +74,7 @@ export default function Success() {
               <h3 class="mt-5 text-2xl font-bold">CHECK YOUR EMAIL</h3>
 
               <p class="mt-4 text-zinc-300 leading-relaxed">
-                Thank you for registering for XPENG Vision Night.
+                Thank you for registering for XPENG V1SION NIGHT.
               </p>
 
               <p class="mt-4 text-zinc-300 leading-relaxed">
@@ -97,7 +102,7 @@ export default function Success() {
                 <h4 class="font-semibold text-xl">EVENT REMINDER</h4>
                 <div class="mt-2 text-zinc-300 space-y-1">
                   <p>Date : 28 June 2026</p>
-                  <p>Time : 14.00 - 21.00 WIB</p>
+                  <p>Time : {eventTime}</p>
                   <p>Venue : Istora Senayan, Jakarta</p>
                 </div>
               </div>
@@ -113,7 +118,7 @@ export default function Success() {
         {/* FOOTER */}
         <div class="bg-black border-t border-white/10 py-6 text-center">
           <p class="text-zinc-400 text-sm">
-            XPENG — LEADING THE FUTURE OF AI MOBILITY
+            XPENG V1SION NIGHT — AI TRANSFORMS THE WORLD
           </p>
         </div>
       </div>

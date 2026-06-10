@@ -17,7 +17,10 @@ import {
 import SelectField from "../components/SelectField";
 import hero from "../assets/generalInvite.jpg";
 import logo from "../assets/logoXPENG.png";
+import heroRegular from "../assets/INV-NONVIP-XVN.jpeg";
+import heroVIP from "../assets/INV-VIP-XVN.jpeg";
 import { connectWS, sendWS } from "../services/ws";
+import h from "solid-js/h";
 const categoryMap = {
   f7d92kLm: "SUPER VVIP",
   g23dfplX2: "VVIP",
@@ -25,7 +28,8 @@ const categoryMap = {
   b9d2a11YpQ: "DEALER",
   c7f8e55RtN: "MEDIA",
   d4k9p31WsM: "COMMUNITY",
-  e2m7q88HxV: "PUBLIC",
+  e2m7q88HxV: "FRONT",
+  h5n6r22AbC: "LEASING",
 };
 const categoryTitleMap = {
   "SUPER VVIP": "SUPER VVIP INVITATION",
@@ -34,7 +38,8 @@ const categoryTitleMap = {
   DEALER: "DEALER INVITATION",
   MEDIA: "MEDIA INVITATION",
   COMMUNITY: "COMMUNITY INVITATION",
-  PUBLIC: "PUBLIC INVITATION",
+  FRONT: "FRONT INVITATION",
+  LEASING: "LEASING INVITATION",
 };
 const categoryConfig = {
   "SUPER VVIP": {
@@ -61,9 +66,13 @@ const categoryConfig = {
     maxCapacity: 638,
     allowPlusOne: true,
   },
-  PUBLIC: {
+  FRONT: {
     maxCapacity: 386,
     allowPlusOne: true,
+  },
+  LEASING: {
+    maxCapacity: 100,
+    allowPlusOne: false,
   },
 };
 
@@ -72,6 +81,9 @@ export default function Reservation() {
   const queryParams = new URLSearchParams(window.location.search);
   const token = queryParams.get("c");
   const category = categoryMap[token] || null;
+  const isVIPCategory = category === "VIP";
+  const eventTime = isVIPCategory ? "17.00 - 21.00 WIB" : "14.00 - 21.00 WIB";
+  const heroImage = isVIPCategory ? heroVIP : heroRegular;
   const maxGuest = categoryConfig[category]?.allowPlusOne ? 1 : 0;
   const [loading, setLoading] = createSignal(false);
   const [bringGuest, setBringGuest] = createSignal(false);
@@ -109,7 +121,6 @@ export default function Reservation() {
       }
     };
   });
-
   onCleanup(() => {
     ws?.close();
   });
@@ -119,7 +130,6 @@ export default function Reservation() {
     phone: "",
     company: "",
   });
-
   const validateForm = () => {
     if (!form().name.trim()) {
       Swal.fire({
@@ -187,28 +197,7 @@ export default function Reservation() {
       });
       return false;
     }
-    if (!form().jobTitle.trim()) {
-      Swal.fire({
-        icon: "warning",
-        title: "Job Title Required",
-        text: "Please enter your job title.",
-        confirmButtonColor: "#D8FF24",
-        background: "#111111",
-        color: "#ffffff",
-      });
-      return false;
-    }
-    if (!form().city.trim()) {
-      Swal.fire({
-        icon: "warning",
-        title: "City Required",
-        text: "Please enter your city.",
-        confirmButtonColor: "#D8FF24",
-        background: "#111111",
-        color: "#ffffff",
-      });
-      return false;
-    }
+
     if (maxGuest > 0 && bringGuest()) {
       if (!guest().name.trim()) {
         Swal.fire({
@@ -353,12 +342,15 @@ export default function Reservation() {
               status_confirmation: "confirmed",
             },
     };
-
     try {
       const rawResponse = await sendWS(payload);
       const response =
         typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
-      if (response?.status === "success" && response?.type === "registered") {
+      if (
+        response?.status === "success" &&
+        (response?.type === "registered" ||
+          response?.type === "registered-plus-one")
+      ) {
         await Swal.fire({
           icon: "success",
           title: "Registration Successful",
@@ -367,18 +359,14 @@ export default function Reservation() {
           background: "#111111",
           color: "#ffffff",
         });
-
         if (response.type === "registered-plus-one") {
           navigate(
-            `/success?primaryQr=${encodeURIComponent(response.data.primaryQrPath)}
-      &guestQr=${encodeURIComponent(response.data.guestQrPath)}
-      &primaryUserId=${response.data.primaryUserId}
-      &guestUserId=${response.data.guestUserId}`,
+            `/success?primaryQr=${encodeURIComponent(response.data.primaryQrPath)}&guestQr=${encodeURIComponent(response.data.guestQrPath)}&primaryUserId=${response.data.primaryUserId}&guestUserId=${response.data.guestUserId}&category=${encodeURIComponent(category)}`,
           );
         } else {
           navigate(
             `/success?qr=${encodeURIComponent(response.data.qrCodeFilePath)}
-      &userId=${response.data.userId}`,
+      &userId=${response.data.userId}&category=${encodeURIComponent(category)}`,
           );
         }
       } else {
@@ -433,13 +421,11 @@ export default function Reservation() {
           <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
           <div class="relative">
             <img
-              src={hero}
+              src={heroImage}
               alt="Hero"
               class="w-full h-[280px] sm:h-[350px] md:h-[420px] lg:h-[520px] object-cover"
             />
-
             <div class="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
-
             <div class="absolute left-4 right-4 md:left-8 md:right-auto top-1/2 -translate-y-1/2 max-w-full md:max-w-[550px]">
               <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-wide leading-none">
                 XPENG
@@ -450,21 +436,16 @@ export default function Reservation() {
               <p class="mt-3 md:mt-6 text-[#D8FF24] text-lg sm:text-xl md:text-2xl lg:text-3xl font-medium uppercase leading-tight">
                 AI TRANSFORMS THE WORLD
               </p>
-
               <div class="mt-4 md:mt-6 w-16 md:w-24 h-[2px] bg-[#D8FF24]" />
-
               <div class="mt-4 md:mt-8 space-y-3 md:space-y-4">
                 <div class="flex items-center gap-2 md:gap-4">
                   <CalendarDays size={20} class="text-[#D8FF24] shrink-0" />
-
                   <span class="text-white text-sm sm:text-base md:text-xl lg:text-2xl font-medium">
-                    28 June 2026 | 14.00 - 21.00 WIB
+                    28 June 2026 | {eventTime}
                   </span>
                 </div>
-
                 <div class="flex items-center gap-2 md:gap-4">
                   <MapPin size={20} class="text-[#D8FF24] shrink-0" />
-
                   <span class="text-white text-sm sm:text-base md:text-xl lg:text-2xl font-medium">
                     Istora Senayan, Jakarta
                   </span>
@@ -475,13 +456,15 @@ export default function Reservation() {
         </div>
         <div class="relative overflow-hidden px-8 py-12 md:px-12 bg-[radial-gradient(circle_at_top_right,rgba(216,255,36,.08),transparent_25%),#030303]">
           <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-[#D8FF24]/10 rounded-full blur-[180px] pointer-events-none" />
-          {/* <h2 class="text-4xl md:text-5xl font-bold tracking-wide text-white">
+          <h2 class="text-4xl md:text-5xl font-bold tracking-wide text-white">
             {categoryTitleMap[category]}
-          </h2> */}
+          </h2>
           <p class="mt-3 text-zinc-300 text-2xl">
-            Please fill in your details below to confirm your attendance at 
-           <span className="text-[#D8FF24] font-bold uppercasetext-2xl">XPENG V1SION NIGHT</span>
-           </p>
+            Please fill in your details below to confirm your attendance at
+            <span className="text-[#D8FF24] font-bold uppercasetext-2xl">
+              XPENG V1SION NIGHT
+            </span>
+          </p>
           <div class="mt-8 border border-[#D8FF24]/20 bg-[#D8FF24]/5 rounded-xl p-5">
             <h3 class="text-[#D8FF24] font-semibold">IMPORTANT NOTICE</h3>
 
@@ -550,7 +533,7 @@ export default function Reservation() {
                   setForm({ ...form(), company: e.currentTarget.value })
                 }
               />
-              <InputField
+              {/* <InputField
                 label="JOB TITLE"
                 icon={Briefcase}
                 placeholder="Enter your job title"
@@ -572,7 +555,7 @@ export default function Reservation() {
                     })
                   }
                 />
-              </div>
+              </div> */}
               {/* {category === "DEALER" && (
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium mb-2 text-white">
@@ -713,7 +696,7 @@ export default function Reservation() {
               )}
             </div>
 
-            <div class="mt-6">
+            {/* <div class="mt-6">
               <SelectField
                 label="HOW DID YOU HEAR ABOUT XPENG V1SION NIGHT? (OPTIONAL)"
                 icon={Megaphone}
@@ -731,7 +714,7 @@ export default function Reservation() {
                   "Email Invitation",
                 ]}
               />
-            </div>
+            </div> */}
             {maxGuest > 0 && (
               <div class="mt-10 border border-[#D8FF24]/20 bg-[#D8FF24]/5 rounded-xl p-6">
                 <div class="flex items-center justify-between">
@@ -805,7 +788,7 @@ export default function Reservation() {
                     }
                   />
 
-                  <InputField
+                  {/* <InputField
                     label="GUEST COMPANY"
                     icon={Building2}
                     value={guest().company}
@@ -815,7 +798,7 @@ export default function Reservation() {
                         company: e.currentTarget.value,
                       })
                     }
-                  />
+                  /> */}
                 </div>
               </div>
             )}

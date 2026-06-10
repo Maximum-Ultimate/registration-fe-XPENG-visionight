@@ -154,7 +154,7 @@ export default function Success() {
         {/* FOOTER */}
         <div class="bg-black border-t border-white/10 py-6 text-center">
           <p class="text-zinc-400 text-sm">
-            XPENG — LEADING THE FUTURE OF AI MOBILITY
+            XPENG V1SION NIGHT — AI TRANSFORMS THE WORLD
           </p>
         </div>
       </div>

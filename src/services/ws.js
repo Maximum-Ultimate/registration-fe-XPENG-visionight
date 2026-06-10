@@ -17,11 +17,12 @@ export function sendWS(data) {
     const handler = (event) => {
       const message = JSON.parse(event.data);
 
-      console.log("WS MESSAGE:", message);
+      // console.log("WS MESSAGE:", message);
 
       // hanya tangkap response REGISTER
       if (
         message.type !== "registered" &&
+        message.type !== "registered-plus-one" &&
         message.status !== "error"
       ) {
         return;

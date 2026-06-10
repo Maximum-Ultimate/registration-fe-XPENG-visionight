@@ -2,18 +2,20 @@ import { useParams } from "@solidjs/router";
 import { createSignal, onMount, onCleanup } from "solid-js";
 
 import { CalendarDays, MapPin, Bell, CheckCircle2, Timer } from "lucide-solid";
-
+import heroRegular from "../assets/INV-NONVIP-XVN.jpeg";
+import heroVIP from "../assets/INV-VIP-XVN.jpeg";
 import hero from "../assets/kvXpeng.jpg";
 import logo from "../assets/logoXPENG.png";
 
 export default function RSVP() {
   const params = useParams();
-
   const [user, setUser] = createSignal(null);
   const [loading, setLoading] = createSignal(true);
   const [confirmed, setConfirmed] = createSignal(false);
-
+  const isVIP = () => user()?.category === "VIP";
   let ws;
+  const eventTime = () => (isVIP() ? "17.00 - 21.00 WIB" : "14.00 - 21.00 WIB");
+  const heroImage = () => (isVIP() ? heroVIP : heroRegular);
 
   onMount(() => {
     ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");
@@ -86,7 +88,7 @@ export default function RSVP() {
 
         <div class="relative">
           <img
-            src={hero}
+            src={heroImage()}
             alt=""
             class="w-full h-[180px] sm:h-[220px] md:h-[320px] object-cover"
           />
@@ -110,11 +112,9 @@ export default function RSVP() {
 
         <div class="p-6 md:p-10">
           {loading() && <div class="text-center py-16">Loading...</div>}
-
           {!loading() && !user() && (
             <div class="text-center py-16">User not found</div>
           )}
-
           {!loading() && user() && (
             <>
               {/* TITLE */}
@@ -272,7 +272,6 @@ export default function RSVP() {
                   <Bell size={30} class="text-[#D8FF24]" />
                   <div>
                     <h4 class="font-bold text-xl">EVENT REMINDER</h4>
-
                     <div class="mt-3 space-y-2 text-zinc-300">
                       <div class="flex items-center gap-2">
                         <CalendarDays size={16} />
@@ -285,7 +284,7 @@ export default function RSVP() {
                       </div>
                       <div class="flex items-center gap-2">
                         <Timer size={16} />
-                        <span>Time : 14.00 - 21.00 WIB</span>
+                        <span>Time : {eventTime()}</span>
                       </div>
                     </div>
                   </div>
@@ -299,7 +298,7 @@ export default function RSVP() {
 
         <div class="border-t border-white/10 py-6 text-center">
           <p class="text-zinc-400 text-sm">
-            XPENG — LEADING THE FUTURE OF AI MOBILITY
+            XPENG V1SION NIGHT — AI TRANSFORMS THE WORLD
           </p>
         </div>
       </div>
