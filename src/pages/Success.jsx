@@ -70,7 +70,6 @@ export default function Success() {
           <div class="max-w-2xl mx-auto mt-10">
             <div class="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm text-center">
               <Mail size={60} class="mx-auto text-[#D8FF24]" />
-
               <h3 class="mt-5 text-2xl font-bold">CHECK YOUR EMAIL</h3>
 
               <p class="mt-4 text-zinc-300 leading-relaxed">

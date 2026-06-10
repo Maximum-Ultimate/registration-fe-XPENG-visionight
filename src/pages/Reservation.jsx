@@ -460,10 +460,7 @@ export default function Reservation() {
             {categoryTitleMap[category]}
           </h2>
           <p class="mt-3 text-zinc-300 text-2xl">
-            Please fill in your details below to confirm your attendance at
-            <span className="text-[#D8FF24] font-bold uppercasetext-2xl">
-              XPENG V1SION NIGHT
-            </span>
+            Please fill in your details below to confirm your attendance at<span className="text-[#D8FF24] font-bold uppercasetext-2xl"> XPENG V1SION NIGHT</span>
           </p>
           <div class="mt-8 border border-[#D8FF24]/20 bg-[#D8FF24]/5 rounded-xl p-5">
             <h3 class="text-[#D8FF24] font-semibold">IMPORTANT NOTICE</h3>
