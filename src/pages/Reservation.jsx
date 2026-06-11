@@ -1,5 +1,5 @@
 import { createSignal, onMount, onCleanup } from "solid-js";
-import { useNavigate } from "@solidjs/router";
+import { useNavigate, useParams } from "@solidjs/router";
 import MD5 from "crypto-js/md5";
 import Swal from "sweetalert2";
 
@@ -17,8 +17,8 @@ import {
 import SelectField from "../components/SelectField";
 import hero from "../assets/generalInvite.jpg";
 import logo from "../assets/logoXPENG.png";
-import heroRegular from "../assets/INV-NONVIP-XVN.jpeg";
-import heroVIP from "../assets/INV-VIP-XVN.jpeg";
+import heroRegular from "../assets/KVFHDWEB.png";
+import heroVIP from "../assets/KVFHDWEB.png";
 import { connectWS, sendWS } from "../services/ws";
 import h from "solid-js/h";
 const categoryMap = {
@@ -85,6 +85,8 @@ export default function Reservation() {
   const heroImage = isVIPCategory ? heroVIP : heroRegular;
   const allowPlusOne = queryParams.get("p") === "1";
   const maxGuest = allowPlusOne ? 1 : 0;
+  const uniqueId = queryParams.get("u");
+
   const [loading, setLoading] = createSignal(false);
   const [bringGuest, setBringGuest] = createSignal(false);
   const [dealerList, setDealerList] = createSignal([]);
@@ -113,11 +115,36 @@ export default function Reservation() {
           action: "GET_DEALER_SEAT",
         }),
       );
+
+      if (uniqueId) {
+        ws.send(
+          JSON.stringify({
+            action: "GET_USER_BY_UNIQUEID",
+            payload: {
+              uniqueId: params.uniqueId,
+            },
+          }),
+        );
+      }
     };
     ws.onmessage = (event) => {
       const response = JSON.parse(event.data);
-      if (response.type === "dealer-seat") {
-        setDealerList(response.data);
+      if (response.type === "user-detail") {
+        const user = response.data;
+
+        setForm({
+          name: user.name || "",
+          email: user.email || "",
+          phone: user.phone || "",
+          company: user.company || "",
+          jobTitle: user.position || "",
+          city: user.city || "",
+          source: user.source || "",
+        });
+
+        if (user.dealer_id) {
+          setDealerId(String(user.dealer_id));
+        }
       }
     };
   });

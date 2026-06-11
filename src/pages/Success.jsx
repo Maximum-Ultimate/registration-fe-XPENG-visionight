@@ -3,8 +3,8 @@ import { CheckCircle2, Bell, CalendarDays, MapPin, Mail } from "lucide-solid";
 
 import hero from "../assets/kvXpeng.jpg";
 import logo from "../assets/logoXPENG.png";
-import heroRegular from "../assets/INV-NONVIP-XVN.jpeg";
-import heroVIP from "../assets/INV-VIP-XVN.jpeg";
+import heroRegular from "../assets/KVFHDWEB.png";
+import heroVIP from "../assets/KVFHDWEB.png";
 
 export default function Success() {
   const location = useLocation();

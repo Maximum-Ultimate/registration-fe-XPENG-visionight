@@ -4,8 +4,8 @@ import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import { sendWS } from "../services/ws";
-import heroRegular from "../assets/INV-NONVIP-XVN.jpeg";
-import heroVIP from "../assets/INV-VIP-XVN.jpeg";
+import heroRegular from "../assets/KVFHDWEB.png";
+import heroVIP from "../assets/KVFHDWEB.png";
 
 export default function DummyQrGenerator() {
   const [counts, setCounts] = createSignal({

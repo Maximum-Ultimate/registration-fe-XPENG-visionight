@@ -1,8 +1,8 @@
 import { useParams } from "@solidjs/router";
 import { createSignal, onMount, onCleanup } from "solid-js";
 import { CalendarDays, MapPin, Bell, CheckCircle2, Timer } from "lucide-solid";
-import heroRegular from "../assets/INV-NONVIP-XVN.jpeg";
-import heroVIP from "../assets/INV-VIP-XVN.jpeg";
+import heroRegular from "../assets/KVFHDWEB.png";
+import heroVIP from "../assets/KVFHDWEB.png";
 import hero from "../assets/kvXpeng.jpg";
 import logo from "../assets/logoXPENG.png";
 
