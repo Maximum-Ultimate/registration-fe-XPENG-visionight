@@ -46,6 +46,10 @@ export default function InputField(props) {
             focus:outline-none
             focus:border-[#D8FF24]
             transition-all
+            disabled:bg-zinc-900
+            disabled:text-zinc-400
+            disabled:border-zinc-700
+            disabled:cursor-not-allowed
           "
         />
       </div>
