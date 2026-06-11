@@ -120,7 +120,7 @@ export default function RSVP() {
                   <>
                     <CheckCircle2 size={52} class="mx-auto text-[#D8FF24]" />
                     <h2 class="mt-4 text-4xl font-bold text-[#D8FF24]">
-                      ATTENDANCE CONFIRMED
+                      RESERVATION CONFIRMED
                     </h2>
                     <p class="mt-4 text-zinc-300 max-w-xl mx-auto">
                       Thank you for confirming your attendance. We look forward
