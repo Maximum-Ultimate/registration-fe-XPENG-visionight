@@ -325,6 +325,7 @@ export default function Reservation() {
     }
     if (loading()) return;
     setLoading(true);
+    console.log("URL UNIQUE ID:", uniqueId);
     const payload = {
       action: maxGuest > 0 && bringGuest() ? "REGISTER_PLUS_ONE" : "REGISTER",
       payload:
@@ -369,6 +370,7 @@ export default function Reservation() {
               status_confirmation: "confirmed",
             },
     };
+    console.log("PAYLOAD:", payload);
     try {
       const rawResponse = await sendWS(payload);
       const response =
