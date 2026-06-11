@@ -13,7 +13,7 @@ export default function RSVP() {
   const [confirmed, setConfirmed] = createSignal(false);
   const isVIP = () => user()?.category === "VIP";
   let ws;
-  const eventTime = () => (isVIP() ? "17.00 - 21.00 WIB" : "14.00 - 21.00 WIB");
+  const eventTime = () => (isVIP() ? "16.30 - 21.00 WIB" : "14.00 - 21.00 WIB");
   const heroImage = () => (isVIP() ? heroVIP : heroRegular);
   onMount(() => {
     ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");

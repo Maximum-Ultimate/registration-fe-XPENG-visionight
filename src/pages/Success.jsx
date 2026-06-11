@@ -16,7 +16,7 @@ export default function Success() {
   const category = params.get("category");
   const isVIP = category === "VIP";
   const heroImage = isVIP ? heroVIP : heroRegular;
-  const eventTime = isVIP ? "17.00 - 21.00 WIB" : "14.00 - 21.00 WIB";
+  const eventTime = isVIP ? "16.30 - 21.00 WIB" : "14.00 - 21.00 WIB";
 
   return (
     <div class="min-h-screen bg-black shadow-2xl py-8 px-4">

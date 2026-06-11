@@ -81,7 +81,7 @@ export default function Reservation() {
   const token = queryParams.get("c");
   const category = categoryMap[token] || null;
   const isVIPCategory = category === "VIP";
-  const eventTime = isVIPCategory ? "17.00 - 21.00 WIB" : "14.00 - 21.00 WIB";
+  const eventTime = isVIPCategory ? "16.30 - 21.00 WIB" : "14.00 - 21.00 WIB";
   const heroImage = isVIPCategory ? heroVIP : heroRegular;
   const allowPlusOne = queryParams.get("p") === "1";
   const maxGuest = allowPlusOne ? 1 : 0;
