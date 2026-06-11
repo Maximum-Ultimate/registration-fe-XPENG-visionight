@@ -139,7 +139,6 @@ export default function Reservation() {
           company: user.company || "",
           jobTitle: user.position || "",
           city: user.city || "",
-          source: user.source || "",
         });
 
         if (user.dealer_id) {
