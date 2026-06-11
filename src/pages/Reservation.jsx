@@ -132,7 +132,10 @@ export default function Reservation() {
       const response = JSON.parse(event.data);
       if (response.type === "user-detail") {
         const user = response.data;
-
+        if (user.status_confirmation === "confirmed") {
+          navigate(`/rsvp/${user.uniqueId}`);
+          return;
+        }
         setForm({
           name: user.name || "",
           email: user.email || "",
