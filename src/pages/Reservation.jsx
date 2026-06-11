@@ -121,7 +121,7 @@ export default function Reservation() {
           JSON.stringify({
             action: "GET_USER_BY_UNIQUEID",
             payload: {
-              uniqueId: params.uniqueId,
+              uniqueId: uniqueId,
             },
           }),
         );
