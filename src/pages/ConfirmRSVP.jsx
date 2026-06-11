@@ -144,7 +144,7 @@ export default function RSVP() {
                     <div class="p-6 text-center">
                       {confirmed() && (
                         <img
-                          src={`http://localhost:3010/${user().qr_code}`}
+                          src={`https://cloud.xpengvisionnight.co.id/${user().qr_code}`}
                           alt="Primary QR"
                           class="w-52 h-52 mx-auto bg-white rounded-2xl p-3"
                         />
@@ -181,7 +181,7 @@ export default function RSVP() {
                       <div class="p-6 text-center">
                         {confirmed() && (
                           <img
-                            src={`http://localhost:3010/${user().guest.qr_code}`}
+                            src={`https://cloud.xpengvisionnight.co.id/${user().guest.qr_code}`}
                             alt="Guest QR"
                             class="w-52 h-52 mx-auto bg-white rounded-2xl p-3"
                           />
