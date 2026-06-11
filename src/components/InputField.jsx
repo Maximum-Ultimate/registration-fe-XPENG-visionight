@@ -27,6 +27,7 @@ export default function InputField(props) {
           value={props.value}
           onInput={props.onInput}
           placeholder={props.placeholder}
+          disabled={props.disabled}
           class="
             w-full
             h-[56px]
@@ -39,7 +40,6 @@ export default function InputField(props) {
             border
             border-white/15
             text-white
-            disabled={props.disabled}
             text-sm
             md:text-lg
             placeholder:text-zinc-500
