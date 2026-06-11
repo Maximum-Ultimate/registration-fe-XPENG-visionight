@@ -224,7 +224,6 @@ export default function Reservation() {
       });
       return false;
     }
-
     if (maxGuest > 0 && bringGuest()) {
       if (!guest().name.trim()) {
         Swal.fire({
@@ -355,6 +354,7 @@ export default function Reservation() {
               sendEmail: true,
             }
           : {
+              uniqueId,
               name: form().name,
               email: form().email,
               phone: form().phone,
