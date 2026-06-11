@@ -2,12 +2,9 @@ let ws = null;
 
 export function connectWS() {
   if (ws) return ws;
-
-  ws = new WebSocket("wss://cloud.xpengvisionnight.co.id/");
-
+  ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");
   return ws;
 }
-
 export function sendWS(data) {
   return new Promise((resolve, reject) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -16,25 +13,21 @@ export function sendWS(data) {
     }
     const handler = (event) => {
       const message = JSON.parse(event.data);
-
-      // console.log("WS MESSAGE:", message);
-
-      // hanya tangkap response REGISTER
       if (
-        message.type !== "registered" &&
-        message.type !== "registered-plus-one" &&
+        ![
+          "registered",
+          "registered-plus-one",
+          "dummy-users-generated",
+        ].includes(message.type) &&
         message.status !== "error"
       ) {
         return;
       }
-
       ws.removeEventListener("message", handler);
-
       if (message.status === "error") {
         reject(new Error(message.message));
         return;
       }
-
       resolve(message);
     };
     ws.addEventListener("message", handler);

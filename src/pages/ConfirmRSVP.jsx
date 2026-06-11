@@ -1,6 +1,5 @@
 import { useParams } from "@solidjs/router";
 import { createSignal, onMount, onCleanup } from "solid-js";
-
 import { CalendarDays, MapPin, Bell, CheckCircle2, Timer } from "lucide-solid";
 import heroRegular from "../assets/INV-NONVIP-XVN.jpeg";
 import heroVIP from "../assets/INV-VIP-XVN.jpeg";
@@ -16,7 +15,6 @@ export default function RSVP() {
   let ws;
   const eventTime = () => (isVIP() ? "17.00 - 21.00 WIB" : "14.00 - 21.00 WIB");
   const heroImage = () => (isVIP() ? heroVIP : heroRegular);
-
   onMount(() => {
     ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");
     ws.onopen = () => {
@@ -58,11 +56,9 @@ export default function RSVP() {
       }
     };
   });
-
   onCleanup(() => {
     ws?.close();
   });
-
   const confirmAttendance = () => {
     ws.send(
       JSON.stringify({
@@ -79,29 +75,23 @@ export default function RSVP() {
     <div class="min-h-screen bg-black py-8 px-4 text-white">
       <div class="max-w-[920px] mx-auto bg-black rounded-2xl overflow-hidden shadow-2xl">
         {/* HEADER */}
-
         <div class="bg-black py-5 text-center border-b border-white/20">
           <img src={logo} alt="XPENG" class="h-10 mx-auto" />
         </div>
-
         {/* HERO */}
-
         <div class="relative">
           <img
             src={heroImage()}
             alt=""
             class="w-full h-[180px] sm:h-[220px] md:h-[320px] object-cover"
           />
-
           <div class="absolute inset-0 bg-black/60" />
-
           <div class="absolute left-6 md:left-10 top-1/2 -translate-y-1/2">
             <h1 class="text-2xl sm:text-4xl md:text-6xl font-bold">
               XPENG
               <br />
               V1SION NIGHT
             </h1>
-
             <p class="mt-4 text-[#D8FF24] text-sm md:text-xl uppercase">
               AI TRANSFORMS THE WORLD
             </p>
@@ -109,7 +99,6 @@ export default function RSVP() {
         </div>
 
         {/* CONTENT */}
-
         <div class="p-6 md:p-10">
           {loading() && <div class="text-center py-16">Loading...</div>}
           {!loading() && !user() && (
@@ -118,12 +107,10 @@ export default function RSVP() {
           {!loading() && user() && (
             <>
               {/* TITLE */}
-
               <div class="text-center">
                 {!confirmed() ? (
                   <>
                     <h2 class="text-4xl font-bold">RSVP CONFIRMATION</h2>
-
                     <p class="mt-4 text-zinc-400 max-w-xl mx-auto">
                       Please review your information below and confirm your
                       attendance for XPENG V1SION NIGHT.
@@ -132,11 +119,9 @@ export default function RSVP() {
                 ) : (
                   <>
                     <CheckCircle2 size={52} class="mx-auto text-[#D8FF24]" />
-
                     <h2 class="mt-4 text-4xl font-bold text-[#D8FF24]">
                       ATTENDANCE CONFIRMED
                     </h2>
-
                     <p class="mt-4 text-zinc-300 max-w-xl mx-auto">
                       Thank you for confirming your attendance. We look forward
                       to welcoming you at XPENG V1SION NIGHT.
@@ -144,7 +129,6 @@ export default function RSVP() {
                   </>
                 )}
               </div>
-
               {/* USER CARD */}
               <div class="mt-10">
                 <div
@@ -157,33 +141,28 @@ export default function RSVP() {
                     <div class="bg-[#D8FF24] text-black px-5 py-3 font-bold tracking-wider text-center">
                       PRIMARY GUEST
                     </div>
-
                     <div class="p-6 text-center">
                       {confirmed() && (
                         <img
-                          src={`https://cloud.xpengvisionnight.co.id/${user().qr_code}`}
+                          src={`http://localhost:3010/${user().qr_code}`}
                           alt="Primary QR"
                           class="w-52 h-52 mx-auto bg-white rounded-2xl p-3"
                         />
                       )}
 
                       <h3 class="mt-5 text-2xl font-bold">{user().name}</h3>
-
                       <p class="text-zinc-400 mt-1">{user().company}</p>
-
                       <div class="mt-6 space-y-4 text-left">
                         <div>
                           <p class="text-zinc-500 text-sm">Email</p>
                           <p>{user().email}</p>
                         </div>
-
                         <div>
                           <p class="text-zinc-500 text-sm">Category</p>
                           <p class="text-[#D8FF24] font-semibold">
                             {user().category}
                           </p>
                         </div>
-
                         {confirmed() && (
                           <div>
                             <p class="text-zinc-500 text-sm">Registration ID</p>
@@ -193,40 +172,33 @@ export default function RSVP() {
                       </div>
                     </div>
                   </div>
-
                   {/* GUEST TICKET */}
                   {user()?.guest && (
                     <div class="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-md overflow-hidden">
                       <div class="bg-white text-black px-5 py-3 font-bold tracking-wider text-center">
                         ADDITIONAL GUEST
                       </div>
-
                       <div class="p-6 text-center">
                         {confirmed() && (
                           <img
-                            src={`https://cloud.xpengvisionnight.co.id/${user().guest.qr_code}`}
+                            src={`http://localhost:3010/${user().guest.qr_code}`}
                             alt="Guest QR"
                             class="w-52 h-52 mx-auto bg-white rounded-2xl p-3"
                           />
                         )}
-
                         <h3 class="mt-5 text-2xl font-bold">
                           {user().guest.name}
                         </h3>
-
                         <p class="text-zinc-400 mt-1">{user().guest.company}</p>
-
                         <div class="mt-6 space-y-4 text-left">
                           <div>
                             <p class="text-zinc-500 text-sm">Email</p>
                             <p>{user().guest.email}</p>
                           </div>
-
                           <div>
                             <p class="text-zinc-500 text-sm">Category</p>
                             <p>{user().guest.category}</p>
                           </div>
-
                           {confirmed() && (
                             <div>
                               <p class="text-zinc-500 text-sm">

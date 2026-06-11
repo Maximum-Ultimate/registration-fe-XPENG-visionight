@@ -72,10 +72,9 @@ const categoryConfig = {
   },
   LEASING: {
     maxCapacity: 100,
-    allowPlusOne: false,
+    allowPlusOne: true,
   },
 };
-
 export default function Reservation() {
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(window.location.search);
@@ -84,7 +83,8 @@ export default function Reservation() {
   const isVIPCategory = category === "VIP";
   const eventTime = isVIPCategory ? "17.00 - 21.00 WIB" : "14.00 - 21.00 WIB";
   const heroImage = isVIPCategory ? heroVIP : heroRegular;
-  const maxGuest = categoryConfig[category]?.allowPlusOne ? 1 : 0;
+  const allowPlusOne = queryParams.get("p") === "1";
+  const maxGuest = allowPlusOne ? 1 : 0;
   const [loading, setLoading] = createSignal(false);
   const [bringGuest, setBringGuest] = createSignal(false);
   const [dealerList, setDealerList] = createSignal([]);
@@ -103,7 +103,7 @@ export default function Reservation() {
     connectWS();
     const WS_URL =
       window.location.hostname === "localhost"
-        ? "ws://localhost:3010"
+        ? "wss://cloud.xpengvisionnight.co.id"
         : "wss://cloud.xpengvisionnight.co.id";
 
     ws = new WebSocket(WS_URL);
@@ -460,7 +460,11 @@ export default function Reservation() {
             {categoryTitleMap[category]}
           </h2>
           <p class="mt-3 text-zinc-300 text-2xl">
-            Please fill in your details below to confirm your attendance at<span className="text-[#D8FF24] font-bold uppercasetext-2xl"> XPENG V1SION NIGHT</span>
+            Please fill in your details below to confirm your attendance at
+            <span className="text-[#D8FF24] font-bold uppercasetext-2xl">
+              {" "}
+              XPENG V1SION NIGHT
+            </span>
           </p>
           <div class="mt-8 border border-[#D8FF24]/20 bg-[#D8FF24]/5 rounded-xl p-5">
             <h3 class="text-[#D8FF24] font-semibold">IMPORTANT NOTICE</h3>
