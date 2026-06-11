@@ -113,7 +113,7 @@ export default function RSVP() {
                     <h2 class="text-4xl font-bold">RSVP CONFIRMATION</h2>
                     <p class="mt-4 text-zinc-400 max-w-xl mx-auto">
                       Please review your information below and confirm your
-                      attendance for XPENG V1SION NIGHT.
+                      reservation for XPENG V1SION NIGHT.
                     </p>
                   </>
                 ) : (
@@ -123,7 +123,7 @@ export default function RSVP() {
                       RESERVATION CONFIRMED
                     </h2>
                     <p class="mt-4 text-zinc-300 max-w-xl mx-auto">
-                      Thank you for confirming your attendance. We look forward
+                      Thank you for confirming your reservation. We look forward
                       to welcoming you at XPENG V1SION NIGHT.
                     </p>
                   </>
@@ -234,7 +234,7 @@ export default function RSVP() {
                   transition-all
                   "
                 >
-                  CONFIRM ATTENDANCE
+                  CONFIRM RESERVATION
                 </button>
               )}
 
