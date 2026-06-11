@@ -86,6 +86,7 @@ export default function Reservation() {
   const allowPlusOne = queryParams.get("p") === "1";
   const maxGuest = allowPlusOne ? 1 : 0;
   const uniqueId = queryParams.get("u");
+  const isInvitationUser = !!uniqueId;
 
   const [loading, setLoading] = createSignal(false);
   const [bringGuest, setBringGuest] = createSignal(false);
@@ -518,6 +519,7 @@ export default function Reservation() {
                 icon={User}
                 placeholder="Enter your full name"
                 value={form().name}
+                disabled={isInvitationUser}
                 onInput={(e) =>
                   setForm({ ...form(), name: e.currentTarget.value })
                 }
@@ -529,6 +531,7 @@ export default function Reservation() {
                 icon={Mail}
                 placeholder="Enter your email address"
                 value={form().email}
+                disabled={isInvitationUser}
                 onInput={(e) =>
                   setForm({ ...form(), email: e.currentTarget.value })
                 }
@@ -540,6 +543,7 @@ export default function Reservation() {
                 icon={Phone}
                 placeholder="Enter your phone number"
                 value={form().phone}
+                disabled={isInvitationUser}
                 onInput={(e) =>
                   setForm({
                     ...form(),
@@ -556,6 +560,7 @@ export default function Reservation() {
                 icon={Building2}
                 placeholder="Enter company or organization"
                 value={form().company}
+                disabled={isInvitationUser}
                 onInput={(e) =>
                   setForm({ ...form(), company: e.currentTarget.value })
                 }
