@@ -124,7 +124,7 @@ export default function Reservation() {
   const dealerInfo = dealerCodeMap[dealerCode];
   const fixedDealerId = dealerInfo?.id || null;
   const fixedDealerName = dealerInfo?.name || "";
-  const dealerIdFromUrl = dealerMap[dealerCode];
+ 
   const isInvitationUser = !!uniqueId;
 
   const [loading, setLoading] = createSignal(false);
