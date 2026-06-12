@@ -75,6 +75,40 @@ const categoryConfig = {
     allowPlusOne: true,
   },
 };
+const dealerCodeMap = {
+  p8X2k: {
+    id: 1,
+    name: "XPENG Puri",
+  },
+  r7Yd9: {
+    id: 2,
+    name: "XPENG BSD",
+  },
+  m4Tp8: {
+    id: 3,
+    name: "XPENG Sunter",
+  },
+  k9Vu3: {
+    id: 4,
+    name: "XPENG Bandung",
+  },
+  z2Hx7: {
+    id: 5,
+    name: "XPENG Pondok Indah",
+  },
+  c5Qr1: {
+    id: 6,
+    name: "XPENG Pluit",
+  },
+  t8Bn4: {
+    id: 8,
+    name: "XPENG Alam Sutera",
+  },
+  y3Df6: {
+    id: 9,
+    name: "XPENG PIK 2",
+  },
+};
 export default function Reservation() {
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(window.location.search);
@@ -86,6 +120,11 @@ export default function Reservation() {
   const allowPlusOne = queryParams.get("p") === "1";
   const maxGuest = allowPlusOne ? 1 : 0;
   const uniqueId = queryParams.get("u");
+  const dealerCode = queryParams.get("d");
+  const dealerInfo = dealerCodeMap[dealerCode];
+  const fixedDealerId = dealerInfo?.id || null;
+  const fixedDealerName = dealerInfo?.name || "";
+  const dealerIdFromUrl = dealerMap[dealerCode];
   const isInvitationUser = !!uniqueId;
 
   const [loading, setLoading] = createSignal(false);
@@ -291,7 +330,7 @@ export default function Reservation() {
         return false;
       }
     }
-    if (category === "DEALER" && !dealerId()) {
+    if (category === "DEALER" && !fixedDealerId && !dealerId()) {
       Swal.fire({
         icon: "warning",
         title: "Dealer Required",
@@ -304,7 +343,7 @@ export default function Reservation() {
       return false;
     }
     const selectedDealer = dealerList().find(
-      (d) => String(d.id) === dealerId(),
+      (d) => String(d.id) === String(fixedDealerId || dealerId()),
     );
     if (
       category === "DEALER" &&
@@ -346,7 +385,7 @@ export default function Reservation() {
                 city: form().city,
                 source: form().source,
                 category,
-                dealer_id: Number(dealerId()),
+                dealer_id: fixedDealerId || Number(dealerId()),
                 password: MD5(`${form().email}-${Date.now()}`).toString(),
                 status_confirmation: "confirmed",
               },
@@ -370,7 +409,7 @@ export default function Reservation() {
               city: form().city,
               source: form().source,
               category,
-              dealer_id: Number(dealerId()),
+              dealer_id: fixedDealerId || Number(dealerId()),
               password: MD5(`${form().email}-${Date.now()}`).toString(),
               sendEmail: true,
               status_confirmation: "confirmed",
@@ -573,6 +612,13 @@ export default function Reservation() {
                   setForm({ ...form(), company: e.currentTarget.value })
                 }
               />
+              {category === "DEALER" && fixedDealerId && (
+                <InputField
+                  label="DEALER LOCATION"
+                  value={fixedDealerName}
+                  disabled
+                />
+              )}
               {/* <InputField
                 label="JOB TITLE"
                 icon={Briefcase}
@@ -708,7 +754,7 @@ export default function Reservation() {
                     })()}
                 </div>
               )} */}
-              {category === "DEALER" && (
+              {category === "DEALER" && !fixedDealerId && (
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium mb-2 text-white">
                     XPENG DEALER LOCATION
