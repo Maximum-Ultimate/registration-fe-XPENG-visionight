@@ -8,7 +8,7 @@ export function connectWS() {
 export function sendWS(data) {
   return new Promise((resolve, reject) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      reject(new Error("WebSocket not connected"));
+      reject(new Error("Internal Server Error - WS not connected"));
       return;
     }
     const handler = (event) => {
