@@ -144,13 +144,13 @@ export default function Reservation() {
           jobTitle: user.position || "",
           city: user.city || "",
         });
-        if (response.type === "dealer-seat") {
-          setDealerList(response.data);
-        }
 
         if (user.dealer_id) {
           setDealerId(String(user.dealer_id));
         }
+      }
+      if (response.type === "dealer-seat") {
+        setDealerList(response.data);
       }
     };
   });
