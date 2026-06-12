@@ -144,6 +144,9 @@ export default function Reservation() {
           jobTitle: user.position || "",
           city: user.city || "",
         });
+        if (response.type === "dealer-seat") {
+          setDealerList(response.data);
+        }
 
         if (user.dealer_id) {
           setDealerId(String(user.dealer_id));
@@ -492,7 +495,7 @@ export default function Reservation() {
             {categoryTitleMap[category]}
           </h2>
           <p class="mt-3 text-zinc-300 text-2xl">
-            Please fill in your details below to confirm your attendance at
+            Please fill in your details below to confirm your reservation at
             <span className="text-[#D8FF24] font-bold uppercasetext-2xl">
               {" "}
               XPENG V1SION NIGHT
