@@ -76,38 +76,14 @@ const categoryConfig = {
   },
 };
 const dealerCodeMap = {
-  p8X2k: {
-    id: 1,
-    name: "XPENG Puri",
-  },
-  r7Yd9: {
-    id: 2,
-    name: "XPENG BSD",
-  },
-  m4Tp8: {
-    id: 3,
-    name: "XPENG Sunter",
-  },
-  k9Vu3: {
-    id: 4,
-    name: "XPENG Bandung",
-  },
-  z2Hx7: {
-    id: 5,
-    name: "XPENG Pondok Indah",
-  },
-  c5Qr1: {
-    id: 6,
-    name: "XPENG Pluit",
-  },
-  t8Bn4: {
-    id: 8,
-    name: "XPENG Alam Sutera",
-  },
-  y3Df6: {
-    id: 9,
-    name: "XPENG PIK 2",
-  },
+  p8X2k: { id: 1, name: "XPENG Puri" },
+  r7Yd9: { id: 2, name: "XPENG BSD" },
+  m4Tp8: { id: 3, name: "XPENG Sunter" },
+  k9Vu3: { id: 4, name: "XPENG Bandung" },
+  z2Hx7: { id: 5, name: "XPENG Pondok Indah" },
+  c5Qr1: { id: 6, name: "XPENG Pluit" },
+  t8Bn4: { id: 8, name: "XPENG Alam Sutera" },
+  y3Df6: { id: 11, name: "XPENG PIK 2" },
 };
 export default function Reservation() {
   const navigate = useNavigate();
@@ -124,7 +100,7 @@ export default function Reservation() {
   const dealerInfo = dealerCodeMap[dealerCode];
   const fixedDealerId = dealerInfo?.id || null;
   const fixedDealerName = dealerInfo?.name || "";
- 
+
   const isInvitationUser = !!uniqueId;
 
   const [loading, setLoading] = createSignal(false);
@@ -166,6 +142,12 @@ export default function Reservation() {
           }),
         );
       }
+      console.log({
+        dealerCode,
+        dealerInfo,
+        fixedDealerId,
+        fixedDealerName,
+      });
     };
     ws.onmessage = (event) => {
       const response = JSON.parse(event.data);
