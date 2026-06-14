@@ -5,7 +5,6 @@ import CryptoJS from "crypto-js";
 export default function DealerDashboard() {
   const [dealers, setDealers] = createSignal([]);
   const [activeTab, setActiveTab] = createSignal("monitor");
-  const [editingCapacity, setEditingCapacity] = createSignal({});
   const [newDealer, setNewDealer] = createSignal({
     dealer_name: "",
     max_capacity: 0,
@@ -44,15 +43,6 @@ export default function DealerDashboard() {
         case "dealer-list":
           setDealers(message.data || []);
           break;
-        case "UPDATE_DEALER_CAPACITY_RESPONSE": {
-          if (message.success) {
-            setEditingCapacity({});
-            showToast("success", message.message);
-          } else {
-            showToast("error", message.message);
-          }
-          break;
-        }
         case "CREATE_DEALER_RESPONSE": {
           if (message.success) {
             showToast("success", message.message);
@@ -130,18 +120,6 @@ export default function DealerDashboard() {
         popup: "border border-zinc-700 rounded-xl",
       },
     });
-  };
-  const saveDealer = (dealer) => {
-    const newCapacity = editingCapacity()[dealer.id] ?? dealer.max_capacity;
-    ws.send(
-      JSON.stringify({
-        action: "UPDATE_DEALER_CAPACITY",
-        payload: {
-          id: dealer.id,
-          max_capacity: Number(newCapacity),
-        },
-      }),
-    );
   };
   const totalCapacity = () =>
     dealers().reduce((sum, d) => sum + Number(d.max_capacity || 0), 0);
@@ -254,6 +232,59 @@ export default function DealerDashboard() {
         action: "DELETE_DEALER",
         payload: {
           id: dealer.id,
+        },
+      }),
+    );
+  };
+  const generateLink = (dealer) =>
+    `https://rsvp.xpengvisionnight.co.id/?c=b9d2a11YpQ&p=1&d=${dealer.dealer_code}`;
+  const editDealer = async (dealer) => {
+    const result = await Swal.fire({
+      title: "Edit Dealer",
+      html: `
+      <input
+        id="dealer_name"
+        class="swal2-input"
+        value="${dealer.dealer_name}"
+        placeholder="Dealer Name"
+      />
+
+      <input
+        id="dealer_code"
+        class="swal2-input"
+        value="${dealer.dealer_code || ""}"
+        placeholder="Dealer Code"
+      />
+
+      <input
+        id="max_capacity"
+        class="swal2-input"
+        type="number"
+        value="${dealer.max_capacity}"
+        placeholder="Capacity"
+      />
+    `,
+      showCancelButton: true,
+      confirmButtonText: "Save",
+      background: "#18181b",
+      color: "#fff",
+      preConfirm: () => ({
+        dealer_name: document.getElementById("dealer_name").value,
+        dealer_code: document.getElementById("dealer_code").value,
+        max_capacity: document.getElementById("max_capacity").value,
+      }),
+    });
+
+    if (!result.isConfirmed) return;
+
+    ws.send(
+      JSON.stringify({
+        action: "UPDATE_DEALER",
+        payload: {
+          id: dealer.id,
+          dealer_name: result.value.dealer_name,
+          dealer_code: result.value.dealer_code,
+          max_capacity: Number(result.value.max_capacity),
         },
       }),
     );
@@ -417,7 +448,22 @@ export default function DealerDashboard() {
                   return (
                     <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
                       <div class="font-semibold mb-3">{dealer.dealer_name}</div>
+                      <div class="mb-3">
+                        <div class="text-xs text-zinc-400 break-all">
+                          {generateLink(dealer)}
+                        </div>
 
+                        <button
+                          class="mt-2 bg-zinc-700 px-2 py-1 rounded text-xs"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generateLink(dealer));
+
+                            showToast("success", "Link copied");
+                          }}
+                        >
+                          Copy Link
+                        </button>
+                      </div>
                       <div class="flex justify-between text-sm mb-3">
                         <span>Used : {used}</span>
 
@@ -431,26 +477,16 @@ export default function DealerDashboard() {
                       </div>
 
                       <div class="flex gap-2">
-                        <input
-                          type="number"
-                          value={
-                            editingCapacity()[dealer.id] ?? dealer.max_capacity
-                          }
-                          class="bg-zinc-800 px-3 py-2 rounded-lg w-32"
-                          onInput={(e) =>
-                            setEditingCapacity((prev) => ({
-                              ...prev,
-                              [dealer.id]: e.target.value,
-                            }))
-                          }
-                        />
-
+                        <span class="text-sm text-zinc-300">
+                          Capacity : {dealer.max_capacity}
+                        </span>
                         <button
-                          class="bg-blue-600 px-4 rounded-lg"
-                          onClick={() => saveDealer(dealer)}
+                          class="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg"
+                          onClick={() => editDealer(dealer)}
                         >
-                          Save
+                          Edit
                         </button>
+
                         <button
                           class="bg-red-600 px-4 rounded-lg"
                           onClick={() => deleteDealer(dealer)}
@@ -473,6 +509,7 @@ export default function DealerDashboard() {
                     <th class="p-4 text-left">Capacity</th>
                     <th class="p-4 text-left">Used</th>
                     <th class="p-4 text-left">Remaining</th>
+                    <th class="p-4 text-left">Invitation Link</th>
                     <th class="p-4 text-left">Action</th>
                   </tr>
                 </thead>
@@ -487,26 +524,8 @@ export default function DealerDashboard() {
                       return (
                         <tr class="border-t border-zinc-800">
                           <td class="p-4">{dealer.dealer_name}</td>
-
-                          <td class="p-4">
-                            <input
-                              type="number"
-                              value={
-                                editingCapacity()[dealer.id] ??
-                                dealer.max_capacity
-                              }
-                              class="bg-zinc-800 px-3 py-2 rounded-lg w-32"
-                              onInput={(e) =>
-                                setEditingCapacity((prev) => ({
-                                  ...prev,
-                                  [dealer.id]: e.target.value,
-                                }))
-                              }
-                            />
-                          </td>
-
+                          <td class="p-4">{dealer.max_capacity}</td>
                           <td class="p-4">{used}</td>
-
                           <td
                             class={`p-4 font-bold ${
                               remaining <= 5 ? "text-red-400" : "text-lime-400"
@@ -514,14 +533,34 @@ export default function DealerDashboard() {
                           >
                             {remaining}
                           </td>
+                          <td class="p-4">
+                            <div class="max-w-xs">
+                              <div class="text-xs text-zinc-400 break-all">
+                                {generateLink(dealer)}
+                              </div>
+
+                              <button
+                                class="mt-2 bg-zinc-700 hover:bg-zinc-600 px-3 py-1 rounded text-xs"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    generateLink(dealer),
+                                  );
+
+                                  showToast("success", "Link copied");
+                                }}
+                              >
+                                Copy Link
+                              </button>
+                            </div>
+                          </td>
 
                           <td class="p-4">
                             <div class="flex gap-2">
                               <button
-                                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"
-                                onClick={() => saveDealer(dealer)}
+                                class="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg"
+                                onClick={() => editDealer(dealer)}
                               >
-                                Save
+                                Edit
                               </button>
 
                               <button

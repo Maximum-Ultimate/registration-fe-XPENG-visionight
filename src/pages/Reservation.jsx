@@ -75,16 +75,7 @@ const categoryConfig = {
     allowPlusOne: true,
   },
 };
-const dealerCodeMap = {
-  p8X2k: { id: 1, name: "XPENG Puri" },
-  r7Yd9: { id: 2, name: "XPENG BSD" },
-  m4Tp8: { id: 3, name: "XPENG Sunter" },
-  k9Vu3: { id: 4, name: "XPENG Bandung" },
-  z2Hx7: { id: 5, name: "XPENG Pondok Indah" },
-  c5Qr1: { id: 6, name: "XPENG Pluit" },
-  t8Bn4: { id: 8, name: "XPENG Alam Sutera" },
-  y3Df6: { id: 11, name: "XPENG PIK 2" },
-};
+
 export default function Reservation() {
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(window.location.search);
@@ -97,9 +88,10 @@ export default function Reservation() {
   const maxGuest = allowPlusOne ? 1 : 0;
   const uniqueId = queryParams.get("u");
   const dealerCode = queryParams.get("d");
-  const dealerInfo = dealerCodeMap[dealerCode];
-  const fixedDealerId = dealerInfo?.id || null;
-  const fixedDealerName = dealerInfo?.name || "";
+
+  const [fixedDealerId, setFixedDealerId] = createSignal(null);
+
+  const [fixedDealerName, setFixedDealerName] = createSignal("");
 
   const isInvitationUser = !!uniqueId;
 
@@ -129,6 +121,12 @@ export default function Reservation() {
       ws.send(
         JSON.stringify({
           action: "GET_DEALER_SEAT",
+        }),
+        JSON.stringify({
+          action: "GET_DEALER_BY_CODE",
+          payload: {
+            dealerCode: dealerCode,
+          },
         }),
       );
 
@@ -172,6 +170,26 @@ export default function Reservation() {
       }
       if (response.type === "dealer-seat") {
         setDealerList(response.data);
+
+        if (dealerCode) {
+          const dealer = response.data.find(
+            (d) => d.dealer_code === dealerCode,
+          );
+
+          if (!dealer) {
+            Swal.fire({
+              icon: "error",
+              title: "Invalid Dealer Link",
+              text: "Dealer code not found",
+            });
+
+            navigate("/invalid-link");
+            return;
+          }
+
+          setFixedDealerId(dealer.id);
+          setFixedDealerName(dealer.dealer_name);
+        }
       }
     };
   });
@@ -325,13 +343,9 @@ export default function Reservation() {
       return false;
     }
     const selectedDealer = dealerList().find(
-      (d) => String(d.id) === String(fixedDealerId || dealerId()),
+      (d) => String(d.id) === String(fixedDealerId() || dealerId()),
     );
-    if (
-      category === "DEALER" &&
-      selectedDealer &&
-      selectedDealer.remaining_seat <= 0
-    ) {
+    if (category === "DEALER" && !fixedDealerId() && !dealerId()) {
       Swal.fire({
         icon: "error",
         title: "Dealer Full",
@@ -367,7 +381,7 @@ export default function Reservation() {
                 city: form().city,
                 source: form().source,
                 category,
-                dealer_id: fixedDealerId || Number(dealerId()),
+                dealer_id: fixedDealerId() || Number(dealerId()),
                 password: MD5(`${form().email}-${Date.now()}`).toString(),
                 status_confirmation: "confirmed",
               },
@@ -391,7 +405,7 @@ export default function Reservation() {
               city: form().city,
               source: form().source,
               category,
-              dealer_id: fixedDealerId || Number(dealerId()),
+              dealer_id: fixedDealerId() || Number(dealerId()),
               password: MD5(`${form().email}-${Date.now()}`).toString(),
               sendEmail: true,
               status_confirmation: "confirmed",
@@ -597,7 +611,7 @@ export default function Reservation() {
               {category === "DEALER" && fixedDealerId && (
                 <InputField
                   label="DEALER LOCATION"
-                  value={fixedDealerName}
+                  value={fixedDealerName()}
                   disabled
                 />
               )}
