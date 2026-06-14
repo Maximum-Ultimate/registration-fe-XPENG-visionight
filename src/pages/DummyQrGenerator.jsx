@@ -23,7 +23,7 @@ export default function DummyQrGenerator() {
   const [generated, setGenerated] = createSignal(false);
   let localWs;
   onMount(() => {
-    localWs = new WebSocket("ws://localhost:3010");
+    localWs = new WebSocket("wss://cloud.xpengvisionnight.co.id");
     localWs.onopen = () => {
       console.log("WS Connected");
     };

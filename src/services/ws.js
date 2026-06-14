@@ -2,7 +2,7 @@ let ws = null;
 
 export function connectWS() {
   if (ws) return ws;
-  ws = new WebSocket("ws://localhost:3010");
+  ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");
   return ws;
 }
 export function sendWS(data) {

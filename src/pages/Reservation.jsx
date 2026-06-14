@@ -121,8 +121,8 @@ export default function Reservation() {
     connectWS();
     const WS_URL =
       window.location.hostname === "localhost"
-        ? "ws://localhost:3010"
-        : "ws://localhost:3010";
+        ? "wss://cloud.xpengvisionnight.co.id"
+        : "wss://cloud.xpengvisionnight.co.id";
 
     ws = new WebSocket(WS_URL);
     ws.onopen = () => {

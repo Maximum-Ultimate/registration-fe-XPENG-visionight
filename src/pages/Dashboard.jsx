@@ -25,7 +25,7 @@ export default function DealerDashboard() {
   let ws;
 
   onMount(() => {
-    ws = new WebSocket("ws://localhost:3010");
+    ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");
 
     ws.onopen = () => {
       ws.send(
