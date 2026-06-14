@@ -45,7 +45,21 @@ export default function DealerDashboard() {
           break;
         case "CREATE_DEALER_RESPONSE": {
           if (message.success) {
-            showToast("success", message.message);
+            Swal.fire({
+              icon: "success",
+              title: "Dealer Created",
+              html: `
+        <div>
+          <p>Dealer berhasil dibuat</p>
+          <p style="margin-top:10px">
+            Dealer Code:
+            <b>${message.dealer_code}</b>
+          </p>
+        </div>
+      `,
+              background: "#18181b",
+              color: "#fff",
+            });
 
             setNewDealer({
               dealer_name: "",
