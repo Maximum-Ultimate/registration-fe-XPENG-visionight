@@ -16,7 +16,7 @@ export default function RSVP() {
   const eventTime = () => (isVIP() ? "16.30 - 21.00 WIB" : "14.00 - 21.00 WIB");
   const heroImage = () => (isVIP() ? heroVIP : heroRegular);
   onMount(() => {
-    ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");
+    ws = new WebSocket("ws://localhost:3010");
     ws.onopen = () => {
       ws.send(
         JSON.stringify({
