@@ -87,7 +87,11 @@ export default function DummyQrGenerator() {
         width: 800,
         margin: 1,
       });
-
+      console.log({
+        index: i,
+        name: user.name?.length,
+        uniqueId: user.uniqueId?.length,
+      });
       container.innerHTML = `
       <div
         style="
