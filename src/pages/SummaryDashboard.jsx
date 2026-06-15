@@ -65,7 +65,7 @@ export default function SummaryDashboard() {
 
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
           <div class="text-zinc-400 text-sm">
-            Dummy Users
+            Generated QRs
           </div>
 
           <div class="text-4xl font-bold text-yellow-400 mt-2">
@@ -190,7 +190,7 @@ export default function SummaryDashboard() {
       <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-8">
         <div class="px-5 py-4 border-b border-zinc-800">
           <h2 class="text-xl font-semibold">
-            Dummy QR Generated
+            Generated QRs
           </h2>
         </div>
 
