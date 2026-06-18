@@ -364,6 +364,7 @@ export default function SummaryDashboard() {
               <option>DEALER</option>
               <option>COMMUNITY</option>
               <option>MEDIA</option>
+              <option>FRONT</option>
             </select>
             <select
               value={attendanceFilter()}
