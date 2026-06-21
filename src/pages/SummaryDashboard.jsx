@@ -24,12 +24,16 @@ export default function SummaryDashboard() {
   const [users, setUsers] = createSignal([]);
   const [categoryFilter, setCategoryFilter] = createSignal("ALL");
   const [attendanceFilter, setAttendanceFilter] = createSignal("ALL");
-  const [participant, setParticipant] = createSignal(null);
+  const [participant, setParticipant] = createSignal(
+    JSON.parse(localStorage.getItem("lastParticipant") || "null"),
+  );
   const [scannerStarted, setScannerStarted] = createSignal(false);
   const [sortBy, setSortBy] = createSignal("");
   const [sortDirection, setSortDirection] = createSignal("asc");
   const [showHistory, setShowHistory] = createSignal(false);
-  const [scanHistory, setScanHistory] = createSignal([]);
+  const [scanHistory, setScanHistory] = createSignal(
+    JSON.parse(localStorage.getItem("scanHistory") || "[]"),
+  );
   const navigate = useNavigate();
 
   let ws;
@@ -109,13 +113,23 @@ export default function SummaryDashboard() {
           await stopScanner();
 
           setParticipant(message);
-          setScanHistory((prev) => [
-            {
-              ...message,
-              time: new Date().toLocaleTimeString(),
-            },
-            ...prev,
-          ]);
+          localStorage.setItem("lastParticipant", JSON.stringify(message));
+          setScanHistory((prev) => {
+            const newHistory = [
+              {
+                ...message,
+                time: new Date().toLocaleTimeString(),
+              },
+              ...prev,
+            ];
+
+            // optional batasi 100 item terakhir
+            const limitedHistory = newHistory.slice(0, 100);
+
+            localStorage.setItem("scanHistory", JSON.stringify(limitedHistory));
+
+            return limitedHistory;
+          });
           Swal.fire({
             icon: "success",
             title: "Attendance Confirmed",
