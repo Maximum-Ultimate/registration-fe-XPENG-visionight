@@ -316,13 +316,6 @@ export default function SummaryDashboard() {
       <div class="mb-8">
         <h1 class="text-4xl font-bold">XPENG V1SION NIGHT</h1>
         <p class="text-zinc-400 mt-2">Live Dashboard Summary</p>
-        <button
-          onClick={() => setShowHistory(!showHistory())}
-          class="px-5 py-3 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center gap-3"
-        >
-          <History size={18} />
-          Scan History
-        </button>
       </div>
       <div class="flex items-center justify-between mb-8">
         <div class="flex gap-3">
