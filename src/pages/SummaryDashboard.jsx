@@ -315,47 +315,66 @@ export default function SummaryDashboard() {
       {/* HEADER */}
       <div class="mb-8">
         <h1 class="text-4xl font-bold">XPENG V1SION NIGHT</h1>
-
         <p class="text-zinc-400 mt-2">Live Dashboard Summary</p>
         <button
           onClick={() => setShowHistory(!showHistory())}
-          class="
-    px-5 py-3
-    bg-zinc-900
-    border border-zinc-800
-    rounded-xl
-    flex items-center gap-3
-  "
+          class="px-5 py-3 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center gap-3"
         >
           <History size={18} />
           Scan History
         </button>
       </div>
-      <div class="flex gap-3 mb-8">
-        <button
-          onClick={() => setActiveTab("summary")}
-          class={`px-5 py-3 rounded-xl ${
-            activeTab() === "summary" ? "bg-lime-400 text-black" : "bg-zinc-900"
-          }`}
-        >
-          Summary
-        </button>
-        <button
-          onClick={() => setActiveTab("details")}
-          class={`px-5 py-3 rounded-xl ${
-            activeTab() === "details" ? "bg-lime-400 text-black" : "bg-zinc-900"
-          }`}
-        >
-          Details
-        </button>
-        <button
-          onClick={() => setActiveTab("scanner")}
-          class={`px-5 py-3 rounded-xl ${
-            activeTab() === "scanner" ? "bg-lime-400 text-black" : "bg-zinc-900"
-          }`}
-        >
-          Scanner
-        </button>
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex gap-3">
+          <button
+            onClick={() => setActiveTab("summary")}
+            class={`px-5 py-3 rounded-xl ${
+              activeTab() === "summary"
+                ? "bg-lime-400 text-black"
+                : "bg-zinc-900"
+            }`}
+          >
+            Summary
+          </button>
+
+          <button
+            onClick={() => setActiveTab("details")}
+            class={`px-5 py-3 rounded-xl ${
+              activeTab() === "details"
+                ? "bg-lime-400 text-black"
+                : "bg-zinc-900"
+            }`}
+          >
+            Details
+          </button>
+
+          <button
+            onClick={() => setActiveTab("scanner")}
+            class={`px-5 py-3 rounded-xl ${
+              activeTab() === "scanner"
+                ? "bg-lime-400 text-black"
+                : "bg-zinc-900"
+            }`}
+          >
+            Scanner
+          </button>
+        </div>
+
+        <Show when={activeTab() === "scanner"}>
+          <button
+            onClick={() => setShowHistory(!showHistory())}
+            class="
+        px-5 py-3
+        bg-zinc-900
+        border border-zinc-800
+        rounded-xl
+        flex items-center gap-3
+      "
+          >
+            <History size={18} />
+            Scan History
+          </button>
+        </Show>
       </div>
 
       <Show when={activeTab() === "summary"}>
@@ -741,9 +760,8 @@ export default function SummaryDashboard() {
                 Close
               </button>
             </div>
-            <div class="aspect-square rounded-2xl overflow-hidden relative">
-              <div id="reader" class="w-full h-full" />
-
+            <div class="w-[450px] h-[320px] rounded-2xl overflow-hidden relative flex items-center justify-center ">
+              <div id="reader" class="w-full h-full mx-auto" />
               <Show when={!scannerStarted()}>
                 <div
                   class="
