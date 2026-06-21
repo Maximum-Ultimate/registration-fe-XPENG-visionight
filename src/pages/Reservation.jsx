@@ -90,11 +90,10 @@ export default function Reservation() {
   const dealerCode = queryParams.get("d");
 
   const [fixedDealerId, setFixedDealerId] = createSignal(null);
-
   const [fixedDealerName, setFixedDealerName] = createSignal("");
-
+  const [nameError, setNameError] = createSignal("");
+  const [companyError, setCompanyError] = createSignal("");
   const isInvitationUser = !!uniqueId;
-
   const [loading, setLoading] = createSignal(false);
   const [bringGuest, setBringGuest] = createSignal(false);
   const [dealerList, setDealerList] = createSignal([]);
@@ -110,51 +109,54 @@ export default function Reservation() {
   });
   let ws;
   onMount(() => {
-    connectWS();
-    const WS_URL =
-      window.location.hostname === "localhost"
-        ? "wss://cloud.xpengvisionnight.co.id"
-        : "wss://cloud.xpengvisionnight.co.id";
-
-    ws = new WebSocket(WS_URL);
-    ws.onopen = () => {
+    ws = connectWS();
+    const init = () => {
       ws.send(
         JSON.stringify({
           action: "GET_DEALER_SEAT",
         }),
-        JSON.stringify({
-          action: "GET_DEALER_BY_CODE",
-          payload: {
-            dealerCode: dealerCode,
-          },
-        }),
       );
-
+      if (dealerCode) {
+        ws.send(
+          JSON.stringify({
+            action: "GET_DEALER_BY_CODE",
+            payload: {
+              dealerCode,
+            },
+          }),
+        );
+      }
       if (uniqueId) {
         ws.send(
           JSON.stringify({
             action: "GET_USER_BY_UNIQUEID",
             payload: {
-              uniqueId: uniqueId,
+              uniqueId,
             },
           }),
         );
       }
-      console.log({
-        dealerCode,
-        dealerInfo,
-        fixedDealerId,
-        fixedDealerName,
-      });
     };
-    ws.onmessage = (event) => {
-      const response = JSON.parse(event.data);
+
+    const handleMessage = (event) => {
+      let response;
+      try {
+        response = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (response.type !== "user-detail" && response.type !== "dealer-seat") {
+        return;
+      }
+
       if (response.type === "user-detail") {
         const user = response.data;
+
         if (user.status_confirmation === "confirmed") {
           navigate(`/rsvp/${user.uniqueId}`);
           return;
         }
+
         setForm({
           name: user.name || "",
           email: user.email || "",
@@ -162,12 +164,14 @@ export default function Reservation() {
           company: user.company || "",
           jobTitle: user.position || "",
           city: user.city || "",
+          source: user.source || "",
         });
 
         if (user.dealer_id) {
           setDealerId(String(user.dealer_id));
         }
       }
+
       if (response.type === "dealer-seat") {
         setDealerList(response.data);
 
@@ -192,16 +196,39 @@ export default function Reservation() {
         }
       }
     };
+
+    let handleOpen;
+
+    if (ws.readyState === WebSocket.OPEN) {
+      init();
+    } else {
+      handleOpen = () => {
+        init();
+      };
+
+      ws.addEventListener("open", handleOpen, {
+        once: true,
+      });
+    }
+
+    ws.addEventListener("message", handleMessage);
+
+    onCleanup(() => {
+      ws.removeEventListener("message", handleMessage);
+
+      if (handleOpen) {
+        ws.removeEventListener("open", handleOpen);
+      }
+    });
   });
-  onCleanup(() => {
-    ws?.close();
-  });
+
   const [guest, setGuest] = createSignal({
     name: "",
     email: "",
     phone: "",
     company: "",
   });
+  const nameCompanyRegex = /^[a-zA-Z0-9\s\-_]+$/;
   const validateForm = () => {
     if (!form().name.trim()) {
       Swal.fire({
@@ -263,6 +290,28 @@ export default function Reservation() {
         icon: "warning",
         title: "Company Required",
         text: "Please enter your company or organization.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return false;
+    }
+    if (!nameCompanyRegex.test(form().name.trim())) {
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Full Name",
+        text: "Full name can only contain letters, numbers, spaces, dash (-), and underscore (_).",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return false;
+    }
+    if (!nameCompanyRegex.test(form().company.trim())) {
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Company",
+        text: "Company name can only contain letters, numbers, spaces, dash (-), and underscore (_).",
         confirmButtonColor: "#D8FF24",
         background: "#111111",
         color: "#ffffff",
@@ -556,17 +605,36 @@ export default function Reservation() {
           </div>
           <form onSubmit={handleSubmit} class="mt-10">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-              <InputField
-                label="FULL NAME"
-                required
-                icon={User}
-                placeholder="Enter your full name"
-                value={form().name}
-                disabled={isInvitationUser}
-                onInput={(e) =>
-                  setForm({ ...form(), name: e.currentTarget.value })
-                }
-              />
+              <div>
+                <InputField
+                  label="FULL NAME"
+                  required
+                  icon={User}
+                  placeholder="Enter your full name"
+                  value={form().name}
+                  disabled={isInvitationUser}
+                  onInput={(e) => {
+                    const value = e.currentTarget.value;
+
+                    if (/[^a-zA-Z\s\-_]/.test(value)) {
+                      setNameError(
+                        "Only letters, spaces, dash (-), and underscore (_) are allowed.",
+                      );
+                    } else {
+                      setNameError("");
+                    }
+
+                    setForm({
+                      ...form(),
+                      name: value.replace(/[^a-zA-Z\s\-_]/g, ""),
+                    });
+                  }}
+                />
+
+                <Show when={nameError()}>
+                  <p class="mt-1 text-xs text-red-400">{nameError()}</p>
+                </Show>
+              </div>
               <InputField
                 label="EMAIL ADDRESS"
                 required
@@ -597,17 +665,36 @@ export default function Reservation() {
                 }
               />
 
-              <InputField
-                label="COMPANY / ORGANIZATION"
-                required
-                icon={Building2}
-                placeholder="Enter company or organization"
-                value={form().company}
-                disabled={isInvitationUser}
-                onInput={(e) =>
-                  setForm({ ...form(), company: e.currentTarget.value })
-                }
-              />
+              <div>
+                <InputField
+                  label="COMPANY / ORGANIZATION"
+                  required
+                  icon={Building2}
+                  placeholder="Enter company or organization"
+                  value={form().company}
+                  disabled={isInvitationUser}
+                  onInput={(e) => {
+                    const value = e.currentTarget.value;
+
+                    if (/[^a-zA-Z0-9\s\-_]/.test(value)) {
+                      setCompanyError(
+                        "Only letters, numbers, spaces, dash (-), and underscore (_) are allowed.",
+                      );
+                    } else {
+                      setCompanyError("");
+                    }
+
+                    setForm({
+                      ...form(),
+                      company: value.replace(/[^a-zA-Z0-9\s\-_]/g, ""),
+                    });
+                  }}
+                />
+
+                <Show when={companyError()}>
+                  <p class="mt-1 text-xs text-red-400">{companyError()}</p>
+                </Show>
+              </div>
               {category === "DEALER" && fixedDealerId && (
                 <InputField
                   label="DEALER LOCATION"
