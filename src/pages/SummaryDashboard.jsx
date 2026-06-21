@@ -1,5 +1,16 @@
-import { createSignal, onMount, onCleanup, For, Show } from "solid-js";
-import { ArrowUpDown } from "lucide-solid";
+import {
+  createSignal,
+  onMount,
+  onCleanup,
+  For,
+  Show,
+  createMemo,
+} from "solid-js";
+import Swal from "sweetalert2";
+import { QrCode } from "lucide-solid";
+import { useNavigate } from "@solidjs/router";
+import { ArrowUpDown, History, ChevronLeft, ChevronRight } from "lucide-solid";
+import { Html5Qrcode } from "html5-qrcode";
 export default function SummaryDashboard() {
   const [summary, setSummary] = createSignal({
     totals: {},
@@ -13,9 +24,17 @@ export default function SummaryDashboard() {
   const [users, setUsers] = createSignal([]);
   const [categoryFilter, setCategoryFilter] = createSignal("ALL");
   const [attendanceFilter, setAttendanceFilter] = createSignal("ALL");
+  const [participant, setParticipant] = createSignal(null);
+  const [scannerStarted, setScannerStarted] = createSignal(false);
   const [sortBy, setSortBy] = createSignal("");
   const [sortDirection, setSortDirection] = createSignal("asc");
+  const [showHistory, setShowHistory] = createSignal(false);
+  const [scanHistory, setScanHistory] = createSignal([]);
+  const navigate = useNavigate();
+
   let ws;
+  let scanner;
+
   onMount(() => {
     ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");
 
@@ -32,16 +51,97 @@ export default function SummaryDashboard() {
       );
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = async (event) => {
       const message = JSON.parse(event.data);
+
+      if (message.status === "error") {
+        await stopScanner();
+
+        let errorText = message.message;
+
+        if (errorText.includes("already attended at")) {
+          const [name, dateText] = errorText.split(" already attended at ");
+
+          const date = new Date(dateText);
+
+          errorText =
+            `${name}\n\n` +
+            `Sudah melakukan attendance sebelumnya.\n` +
+            `Waktu scan: ${date.toLocaleString("id-ID")}`;
+        }
+
+        Swal.fire({
+          icon: "warning",
+          title: "Sudah Check-In",
+          html: `
+    <div class="text-zinc-300 whitespace-pre-line">
+      ${errorText}
+    </div>
+  `,
+          background: "#09090b",
+          color: "#fff",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#a3e635",
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          customClass: {
+            popup:
+              "border border-lime-400 rounded-2xl shadow-[0_0_30px_rgba(163,230,53,0.35)]",
+            title: "text-lime-400",
+            confirmButton: "font-bold rounded-xl px-8",
+          },
+        }).then(() => {
+          startScanner();
+        });
+        return;
+      }
 
       switch (message.type) {
         case "DASHBOARD_SUMMARY":
           setSummary(message.data);
           break;
+
         case "updateUsersDashboard":
           setUsers(message.data?.users || []);
           break;
+
+        case "attend-confirm":
+          await stopScanner();
+
+          setParticipant(message);
+          setScanHistory((prev) => [
+            {
+              ...message,
+              time: new Date().toLocaleTimeString(),
+            },
+            ...prev,
+          ]);
+          Swal.fire({
+            icon: "success",
+            title: "Attendance Confirmed",
+            html: `
+    <div class="text-zinc-300">
+      ${message.name} (${message.category})<br />
+      <span class="text-zinc-400 text-sm">${message.company}</span>
+    </div>
+  `,
+            background: "#09090b",
+            color: "#ffffff",
+            confirmButtonText: "CONTINUE",
+            confirmButtonColor: "#a3e635",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+
+            customClass: {
+              popup:
+                "border border-lime-400 rounded-2xl shadow-[0_0_30px_rgba(163,230,53,0.35)]",
+              title: "text-lime-400",
+              confirmButton: "!text-black font-bold rounded-xl px-8 py-3",
+            },
+          }).then((result) => {
+            if (result.isConfirmed) {
+            }
+          });
       }
     };
   });
@@ -93,6 +193,108 @@ export default function SummaryDashboard() {
       setSortDirection("asc");
     }
   };
+  const startScanner = async () => {
+    if (scannerStarted()) return;
+    try {
+      scanner = new Html5Qrcode("reader");
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: 250,
+        },
+        async (decodedText) => {
+          // matiin scanner dulu supaya ga scan berkali-kali
+          await stopScanner();
+
+          ws.send(
+            JSON.stringify({
+              action: "ATTEND",
+              payload: {
+                attendUniqueId: decodedText,
+              },
+            }),
+          );
+        },
+        () => {},
+      );
+
+      setScannerStarted(true);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  const stopScanner = async () => {
+    try {
+      if (scanner && scannerStarted()) {
+        await scanner.stop();
+        await scanner.clear();
+        scanner = null;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
+    setScannerStarted(false);
+  };
+  const categoryColor = {
+    VVIP: {
+      bg: "bg-yellow-400",
+      border: "border-yellow-400",
+      label: "GOLD",
+    },
+    VIP: {
+      bg: "bg-gray-300",
+      border: "border-gray-300",
+      label: "SILVER",
+    },
+    DEALER: {
+      bg: "bg-cyan-400",
+      border: "border-cyan-400",
+      label: "CYAN",
+    },
+    COMMUNITY: {
+      bg: "bg-green-500",
+      border: "border-green-500",
+      label: "GREEN",
+    },
+    LEASING: {
+      bg: "bg-fuchsia-500",
+      border: "border-fuchsia-500",
+      label: "MAGENTA",
+    },
+    MEDIA: {
+      bg: "bg-orange-500",
+      border: "border-orange-500",
+      label: "ORANGE",
+    },
+    FRONT: {
+      bg: "bg-violet-300",
+      border: "border-violet-300",
+      label: "LILAC",
+    },
+  };
+  const merchandiseEligibleVerticals = [
+    "Dealer Management 3rd Party",
+    "Business Partner Aftersales",
+    "Business Partner MARKETING",
+    "GAIKINDO & IMI",
+    "EIVO Invitation",
+    "Celebrity Customer",
+    "Pemred",
+    "KOL",
+    "Community ERA",
+    "Car Community",
+    "XPENG Apps",
+    "Online Activation ( Socmed)",
+    "Prospect Leasing",
+  ];
+
+  const style = createMemo(
+    () => categoryColor[participant()?.category] || categoryColor.VIP,
+  );
+  const isMerchandiseEligible = () =>
+    merchandiseEligibleVerticals.includes(participant()?.vertical || "");
 
   return (
     <div class="min-h-screen bg-zinc-950 text-white p-6">
@@ -101,6 +303,19 @@ export default function SummaryDashboard() {
         <h1 class="text-4xl font-bold">XPENG V1SION NIGHT</h1>
 
         <p class="text-zinc-400 mt-2">Live Dashboard Summary</p>
+        <button
+          onClick={() => setShowHistory(!showHistory())}
+          class="
+    px-5 py-3
+    bg-zinc-900
+    border border-zinc-800
+    rounded-xl
+    flex items-center gap-3
+  "
+        >
+          <History size={18} />
+          Scan History
+        </button>
       </div>
       <div class="flex gap-3 mb-8">
         <button
@@ -111,7 +326,6 @@ export default function SummaryDashboard() {
         >
           Summary
         </button>
-
         <button
           onClick={() => setActiveTab("details")}
           class={`px-5 py-3 rounded-xl ${
@@ -119,6 +333,14 @@ export default function SummaryDashboard() {
           }`}
         >
           Details
+        </button>
+        <button
+          onClick={() => setActiveTab("scanner")}
+          class={`px-5 py-3 rounded-xl ${
+            activeTab() === "scanner" ? "bg-lime-400 text-black" : "bg-zinc-900"
+          }`}
+        >
+          Scanner
         </button>
       </div>
 
@@ -298,11 +520,7 @@ export default function SummaryDashboard() {
               <div class="text-zinc-400">Confirmed</div>
 
               <div class="text-3xl font-bold text-blue-400">
-                {
-                  filteredUsers().filter(
-                    (u) => u.status_confirmation === "confirmed",
-                  ).length
-                }
+                {summary().totals?.confirmed || 0}
               </div>
             </div>
 
@@ -496,6 +714,152 @@ export default function SummaryDashboard() {
                 </For>
               </tbody>
             </table>
+          </div>
+        </div>
+      </Show>
+      <Show when={activeTab() === "scanner"}>
+        <div class="grid lg:grid-cols-2 gap-6">
+          {/* Scanner */}
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-2xl font-bold mb-6">Scan QR Code</h2>
+              <button class="mb-4" onClick={stopScanner}>
+                Close
+              </button>
+            </div>
+            <div class="aspect-square rounded-2xl overflow-hidden relative">
+              <div id="reader" class="w-full h-full" />
+
+              <Show when={!scannerStarted()}>
+                <div
+                  class="
+      absolute inset-0
+      bg-zinc-950
+      border border-zinc-800
+      rounded-2xl
+      flex items-center justify-center
+      text-zinc-500
+      z-10
+    "
+                >
+                  Scanner Closed
+                </div>
+              </Show>
+            </div>
+            <button
+              onClick={startScanner}
+              disabled={scannerStarted()}
+              class="mt-6 w-full py-4 rounded-xl bg-lime-400 text-black font-bold disabled:opacity-50"
+            >
+              {scannerStarted() ? "Scanning..." : "Start Scanner"}
+            </button>
+          </div>
+
+          {/* Participant */}
+          <Show when={participant()}>
+            <div class="space-y-4">
+              <div>
+                <div class="text-zinc-400">Name</div>
+                <div>{participant().name}</div>
+              </div>
+
+              <div>
+                <div class="text-zinc-400">Email</div>
+                <div>{participant().email}</div>
+              </div>
+
+              <div>
+                <div class="text-zinc-400">Company</div>
+                <div>{participant().company}</div>
+              </div>
+
+              <div>
+                <div class="text-zinc-400">Category</div>
+                <div>{participant().category}</div>
+              </div>
+
+              <div>
+                <div class="text-zinc-400">Vertical</div>
+                <div>{participant().vertical}</div>
+              </div>
+
+              <div class={`mt-8 border rounded-2xl p-5 ${style().border} `}>
+                <div class="text-2xl text-lime-400 font-bold">
+                  ✓ ATTENDANCE CONFIRMED
+                </div>
+
+                <div class="mt-2 text-zinc-300">Participant data is valid.</div>
+
+                <Show when={isMerchandiseEligible()}>
+                  <div
+                    class="
+      mt-4
+      p-4
+      rounded-xl
+      border
+      border-orange-400
+      bg-orange-500/10
+      text-orange-300
+      font-bold
+      text-center
+    "
+                  >
+                    🎁 THIS USER IS ELIGIBLE FOR MERCHANDISE
+                  </div>
+                </Show>
+                <button
+                  class={`
+    mt-8
+    w-full
+    py-5
+    rounded-xl
+    font-bold
+    text-xl
+    text-black
+    ${categoryColor[participant()?.category].bg}
+  `}
+                >
+                  ISSUE {categoryColor[participant()?.category].label} WRISTBAND
+                </button>
+              </div>
+            </div>
+          </Show>
+        </div>
+        <div
+          class={`
+fixed
+top-0
+right-0
+h-screen
+w-96
+bg-zinc-950
+border-l border-zinc-800
+transition-all duration-300
+z-50
+${showHistory() ? "translate-x-0" : "translate-x-full"}
+`}
+        >
+          <div class="p-5 flex justify-between border-b border-zinc-800">
+            <h2 class="text-xl font-bold">Scan History</h2>
+
+            <button onClick={() => setShowHistory(false)}>
+              <ChevronRight />
+            </button>
+          </div>
+
+          <div class="overflow-y-auto h-full p-4 space-y-3">
+            <For each={scanHistory()}>
+              {(item) => (
+                <div class="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                  <div class="font-bold text-lg">{item.name}</div>
+                  <div class="text-zinc-400 text-sm">{item.company}</div>
+                  <div class="mt-2 flex justify-between">
+                    <span class="text-lime-400">{item.category}</span>
+                    <span class="text-zinc-500 text-sm">{item.time}</span>
+                  </div>
+                </div>
+              )}
+            </For>
           </div>
         </div>
       </Show>
