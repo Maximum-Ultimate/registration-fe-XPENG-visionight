@@ -11,3 +11,18 @@ body {
   background: #020202;
   color: white;
 }
+#reader {
+  width: 100% !important;
+}
+
+#reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
+#reader__scan_region {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}

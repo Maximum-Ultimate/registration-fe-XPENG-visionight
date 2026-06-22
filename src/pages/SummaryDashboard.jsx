@@ -62,10 +62,14 @@ export default function SummaryDashboard() {
         await stopScanner();
 
         let errorText = message.message;
+        let title = "Sudah Check-In";
 
-        if (errorText.includes("already attended at")) {
+        if (errorText === "User does not exist") {
+          title = "QR Tidak Terdaftar";
+
+          errorText = "Silahkan hubungi Helpdesk";
+        } else if (errorText.includes("already attended at")) {
           const [name, dateText] = errorText.split(" already attended at ");
-
           const date = new Date(dateText);
 
           errorText =
@@ -76,12 +80,12 @@ export default function SummaryDashboard() {
 
         Swal.fire({
           icon: "warning",
-          title: "Sudah Check-In",
+          title,
           html: `
-    <div class="text-zinc-300 whitespace-pre-line">
-      ${errorText}
-    </div>
-  `,
+      <div class="text-zinc-300 whitespace-pre-line">
+        ${errorText}
+      </div>
+    `,
           background: "#09090b",
           color: "#fff",
           confirmButtonText: "OK",
@@ -97,6 +101,7 @@ export default function SummaryDashboard() {
         }).then(() => {
           startScanner();
         });
+
         return;
       }
 
@@ -343,6 +348,7 @@ export default function SummaryDashboard() {
 
           <button
             onClick={() => setActiveTab("scanner")}
+            disabled 
             class={`px-5 py-3 rounded-xl ${
               activeTab() === "scanner"
                 ? "bg-lime-400 text-black"
@@ -357,19 +363,19 @@ export default function SummaryDashboard() {
           <button
             onClick={() => setShowHistory(!showHistory())}
             class="
-        px-5 py-3
-        bg-zinc-900
-        border border-zinc-800
-        rounded-xl
-        flex items-center gap-3
-      "
+    w-12 h-12 md:w-auto md:h-auto
+    md:px-5 py-3
+    bg-zinc-900
+    border border-zinc-800
+    rounded-full md:rounded-xl
+    flex items-center justify-center gap-3
+  "
           >
             <History size={18} />
-            Scan History
+            <span class="hidden md:inline">Scan History</span>
           </button>
         </Show>
       </div>
-
       <Show when={activeTab() === "summary"}>
         {/* KPI */}
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -546,7 +552,11 @@ export default function SummaryDashboard() {
               <div class="text-zinc-400">Confirmed</div>
 
               <div class="text-3xl font-bold text-blue-400">
-                {summary().totals?.confirmed || 0}
+                {
+                  filteredUsers().filter(
+                    (u) => u.status_confirmation === "confirmed",
+                  ).length
+                }
               </div>
             </div>
 
@@ -744,16 +754,16 @@ export default function SummaryDashboard() {
         </div>
       </Show>
       <Show when={activeTab() === "scanner"}>
-        <div class="grid lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 xl:grid-cols-[500px_1fr] gap-6">
           {/* Scanner */}
-          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-[500px]">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-2xl font-bold mb-6">Scan QR Code</h2>
               <button class="mb-4" onClick={stopScanner}>
                 Close
               </button>
             </div>
-            <div class="w-[450px] h-[320px] rounded-2xl overflow-hidden relative flex items-center justify-center ">
+            <div class=" w-full aspect-[4/3] max-w-[450px] mx-auto rounded-2xl overflow-hidden relative">
               <div id="reader" class="w-full h-full mx-auto" />
               <Show when={!scannerStarted()}>
                 <div
@@ -782,53 +792,34 @@ export default function SummaryDashboard() {
 
           {/* Participant */}
           <Show when={participant()}>
-            <div class="space-y-4">
+            <div class="space-y-4 w-full ">
               <div>
                 <div class="text-zinc-400">Name</div>
                 <div>{participant().name}</div>
               </div>
-
               <div>
                 <div class="text-zinc-400">Email</div>
                 <div>{participant().email}</div>
               </div>
-
               <div>
                 <div class="text-zinc-400">Company</div>
                 <div>{participant().company}</div>
               </div>
-
               <div>
                 <div class="text-zinc-400">Category</div>
                 <div>{participant().category}</div>
               </div>
-
               <div>
                 <div class="text-zinc-400">Vertical</div>
                 <div>{participant().vertical}</div>
               </div>
-
-              <div class={`mt-8 border rounded-2xl p-5 ${style().border} `}>
+              <div class={`border rounded-2xl p-5 ${style().border} `}>
                 <div class="text-2xl text-lime-400 font-bold">
                   ✓ ATTENDANCE CONFIRMED
                 </div>
-
                 <div class="mt-2 text-zinc-300">Participant data is valid.</div>
-
                 <Show when={isMerchandiseEligible()}>
-                  <div
-                    class="
-      mt-4
-      p-4
-      rounded-xl
-      border
-      border-orange-400
-      bg-orange-500/10
-      text-orange-300
-      font-bold
-      text-center
-    "
-                  >
+                  <div class=" mt-4 p-4 rounded-xl border border-orange-400 bg-orange-500/10 text-orange-300 font-bold text-center">
                     🎁 THIS USER IS ELIGIBLE FOR MERCHANDISE
                   </div>
                 </Show>
@@ -844,7 +835,7 @@ export default function SummaryDashboard() {
     ${categoryColor[participant()?.category].bg}
   `}
                 >
-                  ISSUE {categoryColor[participant()?.category].label} WRISTBAND
+                  {categoryColor[participant()?.category].label} WRISTBAND
                 </button>
               </div>
             </div>
