@@ -145,11 +145,26 @@ export default function SummaryDashboard() {
             icon: "success",
             title: "Attendance Confirmed",
             html: `
-    <div class="text-zinc-300">
-      ${message.name} (${message.category})<br />
-      <span class="text-zinc-400 text-sm">${message.company}</span>
+  <div class="text-zinc-300">
+    <div class="font-semibold">
+      ${message.name} (${message.category})
     </div>
-  `,
+
+    <div class="text-zinc-400 text-sm">
+      ${message.company}
+    </div>
+
+    ${
+      message.plusOneOf
+        ? `
+        <div class="mt-3 p-2 rounded-lg border border-yellow-400 bg-yellow-500/10 text-yellow-300">
+          +1 Of: ${message.plusOneOf}
+        </div>
+      `
+        : ""
+    }
+  </div>
+`,
             background: "#09090b",
             color: "#ffffff",
             confirmButtonText: "CONTINUE",
@@ -467,7 +482,6 @@ export default function SummaryDashboard() {
 
     return verticalEligible && !vipBlocked;
   };
-
   const linkUsers = createMemo(() =>
     users().filter(
       (u) =>
@@ -505,8 +519,7 @@ export default function SummaryDashboard() {
         attended: data.attended,
       };
     });
-    Object.entries(result).forEach(([category, data]) => {
-    });
+    Object.entries(result).forEach(([category, data]) => {});
 
     return result;
   });
@@ -618,8 +631,8 @@ export default function SummaryDashboard() {
         {/* COMBINED USERS */}
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-8">
           <div class="bg-lime-400 text-black px-5 py-3 text-center font-bold">
-             Quota: {Object.values(categoryQuota).reduce((a, b) => a + b, 0)}
-            | Remaining:{" "}
+            Quota: {Object.values(categoryQuota).reduce((a, b) => a + b, 0)}|
+            Remaining:{" "}
             {Object.entries(displaySummary()).reduce(
               (sum, [category, data]) =>
                 sum + ((categoryQuota[category] || 0) - data.confirmed),
@@ -1167,6 +1180,14 @@ export default function SummaryDashboard() {
                 <div class="text-zinc-400">Vertical</div>
                 <div>{participant().vertical}</div>
               </div>
+              <Show when={participant().plusOneOf}>
+                <div>
+                  <div class="text-zinc-400">Plus One Of</div>
+                  <div class="text-yellow-400 font-semibold">
+                    {participant().plusOneOf}
+                  </div>
+                </div>
+              </Show>
               <div class={`border rounded-2xl p-5 ${style().border} `}>
                 <div class="text-2xl text-lime-400 font-bold">
                   ✓ ATTENDANCE CONFIRMED
@@ -1221,13 +1242,23 @@ ${showHistory() ? "translate-x-0" : "translate-x-full"}
             <For each={scanHistory()}>
               {(item) => (
                 <div class="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                  <div class="font-bold text-lg">{item.name}</div>
-                  <div class="text-zinc-400 text-sm">{item.company}</div>
-                  <div class="mt-2 flex justify-between">
-                    <span class="text-lime-400">{item.category}</span>
-                    <span class="text-zinc-500 text-sm">{item.time}</span>
-                  </div>
-                </div>
+  <div class="font-bold text-lg">{item.name}</div>
+
+  <div class="text-zinc-400 text-sm">
+    {item.company}
+  </div>
+
+  <Show when={item.plusOneOf}>
+    <div class="mt-2 text-xs text-yellow-400">
+      +1 Of: {item.plusOneOf}
+    </div>
+  </Show>
+
+  <div class="mt-2 flex justify-between">
+    <span class="text-lime-400">{item.category}</span>
+    <span class="text-zinc-500 text-sm">{item.time}</span>
+  </div>
+</div>
               )}
             </For>
           </div>
