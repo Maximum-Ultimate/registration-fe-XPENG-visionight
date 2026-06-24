@@ -1,5 +1,5 @@
 import { createSignal, onMount, onCleanup } from "solid-js";
-import { useNavigate, useParams } from "@solidjs/router";
+import { useNavigate, useParams, A } from "@solidjs/router";
 import MD5 from "crypto-js/md5";
 import Swal from "sweetalert2";
 
@@ -983,10 +983,18 @@ export default function Reservation() {
               </div>
             </button>
 
-            <p class="mt-6 text-center text-zinc-500">
-              By clicking submit, you agree to XPENG's
-              <span class="text-[#D8FF24] ml-1">Privacy Policy</span>
+            <p class="mt-6 text-center text-zinc-500 text-sm leading-6">
+              By clicking <span class="text-white">Submit</span>, you
+              acknowledge that you have read and agree to XPENG's{" "}
+              <A
+                href="/privacy-policy"
+                class="text-[#D8FF24] underline underline-offset-2 hover:text-lime-300"
+              >
+                Privacy Policy
+              </A>
+              .
             </p>
+            {/* <p class="mt-6 text-center text-zinc-500"> By clicking submit, you agree to XPENG's{" "} <a href="/privacy-policy.pdf" target="_blank" rel="noopener noreferrer" class="text-[#D8FF24] underline hover:text-lime-300" > Privacy Policy </a> </p> */}
           </form>
         </div>
       </div>

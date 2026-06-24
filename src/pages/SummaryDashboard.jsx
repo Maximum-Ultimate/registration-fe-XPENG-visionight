@@ -9,7 +9,13 @@ import {
 import Swal from "sweetalert2";
 import { QrCode } from "lucide-solid";
 import { useNavigate } from "@solidjs/router";
-import { ArrowUpDown, History, ChevronLeft, ChevronRight } from "lucide-solid";
+import {
+  ArrowUpDown,
+  History,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+} from "lucide-solid";
 import { Html5Qrcode } from "html5-qrcode";
 export default function SummaryDashboard() {
   const [summary, setSummary] = createSignal({
@@ -212,6 +218,51 @@ export default function SummaryDashboard() {
       setSortDirection("asc");
     }
   };
+  const downloadCSV = () => {
+    const dataToExport = filteredUsers();
+
+    // 1. Tentukan Header Kolom
+    const headers = [
+      "Name",
+      "Category",
+      "Company",
+      "Email",
+      "Confirmation Status",
+      "Attendance Status",
+      "Vertical",
+    ];
+
+    // 2. Format baris data (dan handling jika ada karakter koma atau kutip di dalam data)
+    const rows = dataToExport.map((user) => [
+      `"${(user.name || "").replace(/"/g, '""')}"`,
+      `"${(user.category || "").replace(/"/g, '""')}"`,
+      `"${(user.company || "").replace(/"/g, '""')}"`,
+      `"${(user.email || "").replace(/"/g, '""')}"`,
+      `"${(user.status_confirmation || "").replace(/"/g, '""')}"`,
+      `"${(user.status_attendance || "").replace(/"/g, '""')}"`,
+      `"${(user.vertical || "").replace(/"/g, '""')}"`,
+    ]);
+
+    // 3. Gabungkan header dan baris menjadi satu teks string CSV
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((e) => e.join(",")),
+    ].join("\n");
+
+    // 4. Buat file Blob dan trigger download otomatis di browser
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    // Penamaan file dinamis berdasarkan tanggal hari ini
+    const today = new Date().toISOString().slice(0, 10);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `XPENG_Attendance_Details_${today}.csv`);
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   const startScanner = async () => {
     if (scannerStarted()) return;
     try {
@@ -308,13 +359,166 @@ export default function SummaryDashboard() {
     "Online Activation ( Socmed)",
     "Prospect Leasing",
   ];
+  const nonEligibleVipCompanies = [
+    "XPENG AFTERSALES EIVO",
+    "EAL",
+    "EAL_ChannelDevelopment",
+    "EAL_JDSports",
+    "Erajaya",
+    "Erajaya / IT Solution & Product Management",
+    "Erajaya Active Lifestyle",
+    "Erajaya Digital",
+    "Erajaya Digital/ Category Management",
+    "Erajaya Food & Nourishment",
+    "Erajaya Swasembada",
+    "Erajaya Swasembada, Tbk",
+    "Erajaya_EAL",
+    "Erajaya_SS",
+    "Erajaya_SS Inbound Management",
+    "Erayjaya_EAL",
+    "JD SPORTS/ Erajaya active lifestyle",
+    "PT ERA GAYA AKTIF",
+    "PT Era Inovasi Otomotif",
+    "PT Erajaya Swasembada Tbk",
+    "PT SINAR ERA AKTIF",
+    "PT. Erajaya Swasembada",
+    "PT. Erajaya Swasembada tbk.",
+    "SS",
+    "SCM",
+    "Urban adventure",
+    "TAM",
+    "Erajaya Group_Shared Service",
+    "banking EAL",
+    "PT SES - EAL Div Imaging",
+    "Automotive",
+    "Urban Republic - Erajaya",
+  ].map((c) => c.toLowerCase().trim());
 
+  const groupByCategory = (data) => {
+    const result = {};
+
+    data.forEach((user) => {
+      const category = user.category || "UNKNOWN";
+
+      if (!result[category]) {
+        result[category] = {
+          total: 0,
+          confirmed: 0,
+          attended: 0,
+        };
+      }
+
+      result[category].total++;
+
+      if (user.status_confirmation === "confirmed") {
+        result[category].confirmed++;
+      }
+
+      if (user.status_attendance === "attended") {
+        result[category].attended++;
+      }
+    });
+
+    return result;
+  };
+  const groupCombinedSummary = (data) => {
+    const result = {};
+
+    data.forEach((user) => {
+      let category = user.category || "UNKNOWN";
+
+      // semua dealer digabung jadi 1
+      if (category.toUpperCase().includes("DEALER")) {
+        category = "DEALER";
+      }
+
+      if (!result[category]) {
+        result[category] = {
+          total: 0,
+          confirmed: 0,
+          attended: 0,
+        };
+      }
+
+      result[category].total++;
+
+      if (user.status_confirmation === "confirmed") {
+        result[category].confirmed++;
+      }
+
+      if (user.status_attendance === "attended") {
+        result[category].attended++;
+      }
+    });
+
+    return result;
+  };
   const style = createMemo(
     () => categoryColor[participant()?.category] || categoryColor.VIP,
   );
-  const isMerchandiseEligible = () =>
-    merchandiseEligibleVerticals.includes(participant()?.vertical || "");
+  const isMerchandiseEligible = () => {
+    const verticalEligible = merchandiseEligibleVerticals.includes(
+      participant()?.vertical || "",
+    );
+    const company = (participant()?.company || "").toLowerCase();
+    const vipBlocked =
+      participant()?.category === "VIP" &&
+      nonEligibleVipCompanies.some((c) => company.includes(c.toLowerCase()));
 
+    return verticalEligible && !vipBlocked;
+  };
+
+  const linkUsers = createMemo(() =>
+    users().filter(
+      (u) =>
+        u.status_registration === 0 &&
+        (!u.generated_batch || u.generated_batch === ""),
+    ),
+  );
+  const blastUsers = createMemo(() =>
+    users().filter(
+      (u) =>
+        u.status_registration === 1 &&
+        (!u.generated_batch || u.generated_batch === ""),
+    ),
+  );
+  const blastSummary = createMemo(() => groupByCategory(blastUsers()));
+  const linkSummary = createMemo(() => groupByCategory(linkUsers()));
+  const remainingSummary = createMemo(() => groupByCategory(filteredUsers()));
+  const categoryQuota = {
+    VIP: 620,
+    DEALER: 470,
+    COMMUNITY: 730,
+    LEASING: 210,
+    MEDIA: 120,
+    FRONT: 412,
+    SVVIP: 8,
+    VVIP: 60,
+    "SALES LIVE STREAM": 48,
+  };
+  const displaySummary = createMemo(() => {
+    const result = {};
+    Object.entries(summary().realUsers || {}).forEach(([category, data]) => {
+      result[category] = {
+        total: data.total,
+        confirmed: data.confirmed,
+        attended: data.attended,
+      };
+    });
+    Object.entries(result).forEach(([category, data]) => {
+    });
+
+    return result;
+  });
+
+  const tableCategories = createMemo(() => {
+    const categories = new Set([
+      ...Object.keys(displaySummary()),
+      ...Object.keys(categoryQuota),
+    ]);
+
+    return [...categories];
+  });
   return (
     <div class="min-h-screen bg-zinc-950 text-white p-6">
       {/* HEADER */}
@@ -348,7 +552,6 @@ export default function SummaryDashboard() {
 
           <button
             onClick={() => setActiveTab("scanner")}
-            disabled 
             class={`px-5 py-3 rounded-xl ${
               activeTab() === "scanner"
                 ? "bg-lime-400 text-black"
@@ -378,6 +581,7 @@ export default function SummaryDashboard() {
       </div>
       <Show when={activeTab() === "summary"}>
         {/* KPI */}
+
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
             <div class="text-zinc-400 text-sm">Real Users</div>
@@ -390,7 +594,7 @@ export default function SummaryDashboard() {
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
             <div class="text-zinc-400 text-sm">Generated QRs</div>
 
-            <div class="text-4xl font-bold text-yellow-400 mt-2">
+            <div class="text-4xl font-bold mt-2 opacity-80">
               {summary().totals?.dummyUsers || 0}
             </div>
           </div>
@@ -411,39 +615,182 @@ export default function SummaryDashboard() {
             </div>
           </div>
         </div>
-
-        {/* REAL USERS */}
+        {/* COMBINED USERS */}
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-8">
-          <div class="px-5 py-4 border-b border-zinc-800">
-            <h2 class="text-xl font-semibold">Real Users</h2>
+          <div class="bg-lime-400 text-black px-5 py-3 text-center font-bold">
+             Quota: {Object.values(categoryQuota).reduce((a, b) => a + b, 0)}
+            | Remaining:{" "}
+            {Object.entries(displaySummary()).reduce(
+              (sum, [category, data]) =>
+                sum + ((categoryQuota[category] || 0) - data.confirmed),
+              0,
+            )}
           </div>
-
           <table class="w-full">
             <thead>
               <tr class="bg-zinc-800">
                 <th class="p-4 text-left">Category</th>
-                <th class="p-4 text-left">Total</th>
+                <th class="p-4 text-left">Quota</th>
+                <th class="p-4 text-left">Registered</th>
                 <th class="p-4 text-left">Confirmed</th>
+                <th class="p-4 text-left">Remaining Quota</th>
                 <th class="p-4 text-left">Attended</th>
               </tr>
             </thead>
 
             <tbody>
-              <For each={Object.entries(summary().realUsers || {})}>
-                {([category, data]) => (
-                  <tr class="border-t border-zinc-800">
-                    <td class="p-4">{category}</td>
+              <For each={tableCategories()}>
+                {(category) => {
+                  // Mengubah data menjadi fungsi pembungkus agar tetap REAKTIF
+                  const data = () =>
+                    displaySummary()[category] || {
+                      total: 0,
+                      confirmed: 0,
+                      attended: 0,
+                    };
 
-                    <td class="p-4">{data.total}</td>
+                  const quota = categoryQuota[category];
 
-                    <td class="p-4 text-blue-400">{data.confirmed}</td>
+                  const isNonRegistrationCategory = [
+                    "VVIP",
+                    "SVVIP",
+                    "SALES LIVE STREAM",
+                  ].includes(category);
 
-                    <td class="p-4 text-lime-400">{data.attended}</td>
-                  </tr>
-                )}
+                  // Menggunakan data() sebagai fungsi
+                  const remainingQuota = isNonRegistrationCategory
+                    ? "-"
+                    : quota !== undefined
+                      ? quota - data().confirmed
+                      : "-";
+
+                  return (
+                    <tr class="border-t border-zinc-800">
+                      <td class="p-4">{category}</td>
+
+                      <td class="p-4 ">{quota ?? "-"}</td>
+
+                      <td
+                        class={`p-4 ${
+                          isNonRegistrationCategory
+                            ? "bg-zinc-800 text-zinc-500"
+                            : ""
+                        }`}
+                      >
+                        {data().total}
+                      </td>
+
+                      <td
+                        class={`p-4 text-blue-400 ${
+                          isNonRegistrationCategory
+                            ? "bg-zinc-800 text-zinc-500"
+                            : ""
+                        }`}
+                      >
+                        {isNonRegistrationCategory ? "-" : data().confirmed}
+                      </td>
+
+                      <td
+                        class={`p-4 ${
+                          isNonRegistrationCategory
+                            ? "bg-zinc-800 text-zinc-500"
+                            : "text-yellow-400"
+                        }`}
+                      >
+                        {remainingQuota}
+                      </td>
+
+                      <td
+                        class={`p-4 ${
+                          isNonRegistrationCategory
+                            ? "bg-zinc-800 text-zinc-500"
+                            : "text-lime-400"
+                        }`}
+                      >
+                        {isNonRegistrationCategory ? "-" : data().attended}
+                      </td>
+                    </tr>
+                  );
+                }}
               </For>
             </tbody>
           </table>
+        </div>
+        {/* REAL USERS */}
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-8">
+          <div class="px-5 py-4 border-b border-zinc-800 grid grid-cols-1 text-center">
+            Seperated By Blast QR & Link Invitation
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2">
+            <div>
+              <div class="bg-zinc-800 px-5 py-3 text-center font-bold">
+                Users By Blast QR (
+                {Object.values(summary().blastUsers || {}).reduce(
+                  (sum, item) => sum + item.total,
+                  0,
+                )}
+                )
+              </div>
+
+              <table class="w-full">
+                <thead>
+                  <tr class="bg-zinc-800">
+                    <th class="p-4 text-left">Category</th>
+                    <th class="p-4 text-left">Registered</th>
+                    <th class="p-4 text-left">Confirmed</th>
+                    <th class="p-4 text-left">Attended</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <For each={Object.entries(summary().blastUsers || {})}>
+                    {([category, data]) => (
+                      <tr class="border-t border-zinc-800">
+                        <td class="p-4">{category}</td>
+                        <td class="p-4">{data.total}</td>
+                        <td class="p-4 text-blue-400">{data.confirmed}</td>
+                        <td class="p-4 text-lime-400">{data.attended}</td>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <div class="bg-zinc-800 px-5 py-3 text-center font-bold">
+                Users By Link (
+                {Object.values(summary().linkUsers || {}).reduce(
+                  (sum, item) => sum + item.total,
+                  0,
+                )}
+                )
+              </div>
+
+              <table class="w-full">
+                <thead>
+                  <tr class="bg-zinc-800">
+                    <th class="p-4 text-left">Category</th>
+                    <th class="p-4 text-left">Registered</th>
+                    <th class="p-4 text-left">Confirmed</th>
+                    <th class="p-4 text-left">Attended</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <For each={Object.entries(summary().linkUsers || {})}>
+                    {([category, data]) => (
+                      <tr class="border-t border-zinc-800">
+                        <td class="p-4">{category}</td>
+                        <td class="p-4">{data.total}</td>
+                        <td class="p-4 text-blue-400">{data.confirmed}</td>
+                        <td class="p-4 text-lime-400">{data.attended}</td>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         {/* DEALER */}
@@ -456,7 +803,7 @@ export default function SummaryDashboard() {
             <thead>
               <tr class="bg-zinc-800">
                 <th class="p-4 text-left">Dealer</th>
-                <th class="p-4 text-left">Total</th>
+                <th class="p-4 text-left">Registered</th>
                 <th class="p-4 text-left">Confirmed</th>
                 <th class="p-4 text-left">Attended</th>
               </tr>
@@ -541,13 +888,12 @@ export default function SummaryDashboard() {
       </Show>
       <Show when={activeTab() === "details"}>
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-          <div class="grid grid-cols-4 gap-4 mb-6">
+          {/* <div class="grid grid-cols-5 gap-4 mb-6">
             <div class="bg-zinc-900 rounded-xl p-4">
               <div class="text-zinc-400">Total Users</div>
 
               <div class="text-3xl font-bold">{filteredUsers().length}</div>
             </div>
-
             <div class="bg-zinc-900 rounded-xl p-4">
               <div class="text-zinc-400">Confirmed</div>
 
@@ -559,7 +905,16 @@ export default function SummaryDashboard() {
                 }
               </div>
             </div>
+            <div class="bg-zinc-900 rounded-xl p-4">
+              <div class="text-zinc-400">Remaining</div>
 
+              <div class="text-3xl font-bold text-yellow-400">
+                {2678 -
+                  filteredUsers().filter(
+                    (u) => u.status_confirmation === "confirmed",
+                  ).length}
+              </div>
+            </div>
             <div class="bg-zinc-900 rounded-xl p-4">
               <div class="text-zinc-400">Attended</div>
 
@@ -571,7 +926,6 @@ export default function SummaryDashboard() {
                 }
               </div>
             </div>
-
             <div class="bg-zinc-900 rounded-xl p-4">
               <div class="text-zinc-400">Not Attended</div>
 
@@ -583,7 +937,7 @@ export default function SummaryDashboard() {
                 }
               </div>
             </div>
-          </div>
+          </div> */}
           <div class="overflow-auto max-h-[75vh]">
             <input
               value={search()}

@@ -5,6 +5,8 @@ import RSVP from "./pages/ConfirmRSVP";
 import DummyQrGenerator from "./pages/DummyQrGenerator";
 import Dashboard from "./pages/Dashboard";
 import Summary from "./pages/SummaryDashboard";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+
 
 export default function App() {
   return (
@@ -15,6 +17,7 @@ export default function App() {
       <Route path="/admin/dummy-qr" component={DummyQrGenerator}/>
       <Route path="/admin/dashboard" component={Dashboard}/>
       <Route path="/admin/dashboard/summary" component={Summary}/>
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
     </>
   );
 }
