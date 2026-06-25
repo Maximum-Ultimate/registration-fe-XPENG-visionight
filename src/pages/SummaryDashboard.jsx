@@ -231,12 +231,22 @@ export default function SummaryDashboard() {
 
         if (sortBy() === "plus_one") {
           const aIsPlusOne = a.parent_name && a.parent_name.trim() !== "";
-          const aBringsPlusOne = a.email && emailsWithPlusOne.has(a.email.trim().toLowerCase());
-          aValue = aIsPlusOne ? `+1 of ${a.parent_name}` : (aBringsPlusOne ? "Brings +1" : "-");
+          const aBringsPlusOne =
+            a.email && emailsWithPlusOne.has(a.email.trim().toLowerCase());
+          aValue = aIsPlusOne
+            ? `+1 of ${a.parent_name}`
+            : aBringsPlusOne
+              ? "Brings +1"
+              : "-";
 
           const bIsPlusOne = b.parent_name && b.parent_name.trim() !== "";
-          const bBringsPlusOne = b.email && emailsWithPlusOne.has(b.email.trim().toLowerCase());
-          bValue = bIsPlusOne ? `+1 of ${b.parent_name}` : (bBringsPlusOne ? "Brings +1" : "-");
+          const bBringsPlusOne =
+            b.email && emailsWithPlusOne.has(b.email.trim().toLowerCase());
+          bValue = bIsPlusOne
+            ? `+1 of ${b.parent_name}`
+            : bBringsPlusOne
+              ? "Brings +1"
+              : "-";
         } else {
           aValue = a[sortBy()] ?? "";
           bValue = b[sortBy()] ?? "";
@@ -267,13 +277,25 @@ export default function SummaryDashboard() {
     const emailsWithPlusOne = parentEmailsSet();
 
     const headers = [
-      "Name", "Category", "Company", "Email", "Plus One Status", "Confirmation Status", "Attendance Status", "Vertical",
+      "Name",
+      "Category",
+      "Company",
+      "Email",
+      "Plus One Status",
+      "Confirmation Status",
+      "Attendance Status",
+      "Vertical",
     ];
 
     const rows = dataToExport.map((user) => {
       const isPlusOne = user.parent_name && user.parent_name.trim() !== "";
-      const bringsPlusOne = user.email && emailsWithPlusOne.has(user.email.trim().toLowerCase());
-      const plusOneStatus = isPlusOne ? `+1 of ${user.parent_name}` : (bringsPlusOne ? "Brings +1" : "-");
+      const bringsPlusOne =
+        user.email && emailsWithPlusOne.has(user.email.trim().toLowerCase());
+      const plusOneStatus = isPlusOne
+        ? `+1 of ${user.parent_name}`
+        : bringsPlusOne
+          ? "Brings +1"
+          : "-";
 
       return [
         `"${(user.name || "").replace(/"/g, '""')}"`,
@@ -287,7 +309,10 @@ export default function SummaryDashboard() {
       ];
     });
 
-    const csvContent = [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((e) => e.join(",")),
+    ].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -308,12 +333,19 @@ export default function SummaryDashboard() {
         { fps: 10, qrbox: 250 },
         async (decodedText) => {
           await stopScanner();
-          ws.send(JSON.stringify({ action: "ATTEND", payload: { attendUniqueId: decodedText } }));
+          ws.send(
+            JSON.stringify({
+              action: "ATTEND",
+              payload: { attendUniqueId: decodedText },
+            }),
+          );
         },
         () => {},
       );
       setScannerStarted(true);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const stopScanner = async () => {
@@ -323,7 +355,9 @@ export default function SummaryDashboard() {
         await scanner.clear();
         scanner = null;
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+    }
     setScannerStarted(false);
   };
 
@@ -331,34 +365,83 @@ export default function SummaryDashboard() {
     VVIP: { bg: "bg-yellow-400", border: "border-yellow-400", label: "GOLD" },
     VIP: { bg: "bg-gray-300", border: "border-gray-300", label: "SILVER" },
     DEALER: { bg: "bg-cyan-400", border: "border-cyan-400", label: "CYAN" },
-    COMMUNITY: { bg: "bg-green-500", border: "border-green-500", label: "GREEN" },
-    LEASING: { bg: "bg-fuchsia-500", border: "border-fuchsia-500", label: "MAGENTA" },
-    MEDIA: { bg: "bg-orange-500", border: "border-orange-500", label: "ORANGE" },
+    COMMUNITY: {
+      bg: "bg-green-500",
+      border: "border-green-500",
+      label: "GREEN",
+    },
+    LEASING: {
+      bg: "bg-fuchsia-500",
+      border: "border-fuchsia-500",
+      label: "MAGENTA",
+    },
+    MEDIA: {
+      bg: "bg-orange-500",
+      border: "border-orange-500",
+      label: "ORANGE",
+    },
     FRONT: { bg: "bg-violet-300", border: "border-violet-300", label: "LILAC" },
   };
 
   const merchandiseEligibleVerticals = [
-    "Dealer Management 3rd Party", "Business Partner Aftersales", "Business Partner MARKETING",
-    "GAIKINDO & IMI", "EIVO Invitation", "Celebrity Customer", "Pemred", "KOL",
-    "Community ERA", "Car Community", "XPENG Apps", "Online Activation ( Socmed)", "Prospect Leasing",
+    "Dealer Management 3rd Party",
+    "Business Partner Aftersales",
+    "Business Partner MARKETING",
+    "GAIKINDO & IMI",
+    "EIVO Invitation",
+    "Celebrity Customer",
+    "Pemred",
+    "KOL",
+    "Community ERA",
+    "Car Community",
+    "XPENG Apps",
+    "Online Activation ( Socmed)",
+    "Prospect Leasing",
   ];
 
   const nonEligibleVipCompanies = [
-    "XPENG AFTERSALES EIVO", "EAL", "EAL_ChannelDevelopment", "EAL_JDSports", "Erajaya",
-    "Erajaya / IT Solution & Product Management", "Erajaya Active Lifestyle", "Erajaya Digital",
-    "Erajaya Digital/ Category Management", "Erajaya Food & Nourishment", "Erajaya Swasembada",
-    "Erajaya Swasembada, Tbk", "Erajaya_EAL", "Erajaya_SS", "Erajaya_SS Inbound Management",
-    "Erayjaya_EAL", "JD SPORTS/ Erajaya active lifestyle", "PT ERA GAYA AKTIF",
-    "PT Era Inovasi Otomotif", "PT Erajaya Swasembada Tbk", "PT SINAR ERA AKTIF",
-    "PT. Erajaya Swasembada", "PT. Erajaya Swasembada tbk.", "SS", "SCM", "Urban adventure",
-    "TAM", "Erajaya Group_Shared Service", "banking EAL", "PT SES - EAL Div Imaging",
-    "Automotive", "Urban Republic - Erajaya",
+    "XPENG AFTERSALES EIVO",
+    "EAL",
+    "EAL_ChannelDevelopment",
+    "EAL_JDSports",
+    "Erajaya",
+    "Erajaya / IT Solution & Product Management",
+    "Erajaya Active Lifestyle",
+    "Erajaya Digital",
+    "Erajaya Digital/ Category Management",
+    "Erajaya Food & Nourishment",
+    "Erajaya Swasembada",
+    "Erajaya Swasembada, Tbk",
+    "Erajaya_EAL",
+    "Erajaya_SS",
+    "Erajaya_SS Inbound Management",
+    "Erayjaya_EAL",
+    "JD SPORTS/ Erajaya active lifestyle",
+    "PT ERA GAYA AKTIF",
+    "PT Era Inovasi Otomotif",
+    "PT Erajaya Swasembada Tbk",
+    "PT SINAR ERA AKTIF",
+    "PT. Erajaya Swasembada",
+    "PT. Erajaya Swasembada tbk.",
+    "SS",
+    "SCM",
+    "Urban adventure",
+    "TAM",
+    "Erajaya Group_Shared Service",
+    "banking EAL",
+    "PT SES - EAL Div Imaging",
+    "Automotive",
+    "Urban Republic - Erajaya",
   ].map((c) => c.toLowerCase().trim());
 
-  const style = createMemo(() => categoryColor[participant()?.category] || categoryColor.VIP);
+  const style = createMemo(
+    () => categoryColor[participant()?.category] || categoryColor.VIP,
+  );
 
   const isMerchandiseEligible = () => {
-    const verticalEligible = merchandiseEligibleVerticals.includes(participant()?.vertical || "");
+    const verticalEligible = merchandiseEligibleVerticals.includes(
+      participant()?.vertical || "",
+    );
     const company = (participant()?.company || "").toLowerCase();
     const vipBlocked =
       participant()?.category === "VIP" &&
@@ -369,18 +452,32 @@ export default function SummaryDashboard() {
   const displaySummary = createMemo(() => {
     const result = {};
     Object.entries(summary().realUsers || {}).forEach(([category, data]) => {
-      result[category] = { total: data.total, confirmed: data.confirmed, attended: data.attended };
+      result[category] = {
+        total: data.total,
+        confirmed: data.confirmed,
+        attended: data.attended,
+      };
     });
     return result;
   });
 
   const categoryQuota = {
-    VIP: 620, DEALER: 470, COMMUNITY: 730, LEASING: 210, MEDIA: 120,
-    FRONT: 412, SVVIP: 8, VVIP: 60, "SALES LIVE STREAM": 48,
+    VIP: 620,
+    DEALER: 470,
+    COMMUNITY: 730,
+    LEASING: 210,
+    MEDIA: 120,
+    FRONT: 412,
+    SVVIP: 8,
+    VVIP: 60,
+    "SALES LIVE STREAM": 48,
   };
 
   const tableCategories = createMemo(() => {
-    const categories = new Set([...Object.keys(displaySummary()), ...Object.keys(categoryQuota)]);
+    const categories = new Set([
+      ...Object.keys(displaySummary()),
+      ...Object.keys(categoryQuota),
+    ]);
     return [...categories];
   });
 
@@ -414,13 +511,31 @@ export default function SummaryDashboard() {
 
       <div class="flex items-center justify-between mb-8">
         <div class="flex gap-3">
-          <button onClick={() => setActiveTab("summary")} class={`px-5 py-3 rounded-xl ${activeTab() === "summary" ? "bg-lime-400 text-black" : "bg-zinc-900"}`}>Summary</button>
-          <button onClick={() => setActiveTab("details")} class={`px-5 py-3 rounded-xl ${activeTab() === "details" ? "bg-lime-400 text-black" : "bg-zinc-900"}`}>Details</button>
-          <button onClick={() => setActiveTab("scanner")} class={`px-5 py-3 rounded-xl ${activeTab() === "scanner" ? "bg-lime-400 text-black" : "bg-zinc-900"}`}>Scanner</button>
+          <button
+            onClick={() => setActiveTab("summary")}
+            class={`px-5 py-3 rounded-xl ${activeTab() === "summary" ? "bg-lime-400 text-black" : "bg-zinc-900"}`}
+          >
+            Summary
+          </button>
+          <button
+            onClick={() => setActiveTab("details")}
+            class={`px-5 py-3 rounded-xl ${activeTab() === "details" ? "bg-lime-400 text-black" : "bg-zinc-900"}`}
+          >
+            Details
+          </button>
+          <button
+            onClick={() => setActiveTab("scanner")}
+            class={`px-5 py-3 rounded-xl ${activeTab() === "scanner" ? "bg-lime-400 text-black" : "bg-zinc-900"}`}
+          >
+            Scanner
+          </button>
         </div>
 
         <Show when={activeTab() === "scanner"}>
-          <button onClick={() => setShowHistory(!showHistory())} class="w-12 h-12 md:w-auto md:h-auto md:px-5 py-3 bg-zinc-900 border border-zinc-800 rounded-full md:rounded-xl flex items-center justify-center gap-3">
+          <button
+            onClick={() => setShowHistory(!showHistory())}
+            class="w-12 h-12 md:w-auto md:h-auto md:px-5 py-3 bg-zinc-900 border border-zinc-800 rounded-full md:rounded-xl flex items-center justify-center gap-3"
+          >
             <History size={18} />
             <span class="hidden md:inline">Scan History</span>
           </button>
@@ -432,27 +547,36 @@ export default function SummaryDashboard() {
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
             <div class="text-zinc-400 text-sm">Real Users</div>
-            <div class="text-4xl font-bold mt-2">{summary().totals?.realUsers || 0}</div>
+            <div class="text-4xl font-bold mt-2">
+              {summary().totals?.realUsers || 0}
+            </div>
           </div>
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
             <div class="text-zinc-400 text-sm">Generated QRs</div>
-            <div class="text-4xl font-bold mt-2 opacity-80">{summary().totals?.dummyUsers || 0}</div>
+            <div class="text-4xl font-bold mt-2 opacity-80">
+              {summary().totals?.dummyUsers || 0}
+            </div>
           </div>
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
             <div class="text-zinc-400 text-sm">Confirmed</div>
-            <div class="text-4xl font-bold text-blue-400 mt-2">{summary().totals?.confirmed || 0}</div>
+            <div class="text-4xl font-bold text-blue-400 mt-2">
+              {summary().totals?.confirmed || 0}
+            </div>
           </div>
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
             <div class="text-zinc-400 text-sm">Attended</div>
-            <div class="text-4xl font-bold text-lime-400 mt-2">{summary().totals?.attended || 0}</div>
+            <div class="text-4xl font-bold text-lime-400 mt-2">
+              {summary().totals?.attended || 0}
+            </div>
           </div>
         </div>
-
         {/* COMBINED USERS */}
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-8">
           <div class="bg-lime-400 text-black px-5 py-3 text-center font-bold">
-            Quota: {Object.values(categoryQuota).reduce((a, b) => a + b, 0)} | Remaining:{" "}
-            {Object.entries(displaySummary()).reduce((sum, [category, data]) => sum + ((categoryQuota[category] || 0) - data.confirmed), 0)}
+            Quota: {Object.values(categoryQuota).reduce((a, b) => a + b, 0)} |
+            Remaining:{" "}
+            {Object.values(categoryQuota).reduce((a, b) => a + b, 0) -
+              (summary().totals?.confirmed || 0)}
           </div>
           <table class="w-full">
             <thead>
@@ -468,19 +592,48 @@ export default function SummaryDashboard() {
             <tbody>
               <For each={tableCategories()}>
                 {(category) => {
-                  const data = () => displaySummary()[category] || { total: 0, confirmed: 0, attended: 0 };
+                  const data = () =>
+                    displaySummary()[category] || {
+                      total: 0,
+                      confirmed: 0,
+                      attended: 0,
+                    };
                   const quota = categoryQuota[category];
-                  const isNonRegistrationCategory = ["VVIP", "SVVIP", "SALES LIVE STREAM"].includes(category);
-                  const remainingQuota = isNonRegistrationCategory ? "-" : quota !== undefined ? quota - data().confirmed : "-";
+                  const isNonRegistrationCategory = [
+                    "VVIP",
+                    "SVVIP",
+                    "SALES LIVE STREAM",
+                  ].includes(category);
+                  const remainingQuota = isNonRegistrationCategory
+                    ? "-"
+                    : quota !== undefined
+                      ? quota - data().confirmed
+                      : "-";
 
                   return (
                     <tr class="border-t border-zinc-800">
                       <td class="p-4">{category}</td>
                       <td class="p-4">{quota ?? "-"}</td>
-                      <td class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : ""}`}>{data().total}</td>
-                      <td class={`p-4 text-blue-400 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : ""}`}>{isNonRegistrationCategory ? "-" : data().confirmed}</td>
-                      <td class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : "text-yellow-400"}`}>{remainingQuota}</td>
-                      <td class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : "text-lime-400"}`}>{isNonRegistrationCategory ? "-" : data().attended}</td>
+                      <td
+                        class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : ""}`}
+                      >
+                        {data().total}
+                      </td>
+                      <td
+                        class={`p-4 text-blue-400 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : ""}`}
+                      >
+                        {isNonRegistrationCategory ? "-" : data().confirmed}
+                      </td>
+                      <td
+                        class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : "text-yellow-400"}`}
+                      >
+                        {remainingQuota}
+                      </td>
+                      <td
+                        class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : "text-lime-400"}`}
+                      >
+                        {isNonRegistrationCategory ? "-" : data().attended}
+                      </td>
                     </tr>
                   );
                 }}
@@ -491,33 +644,69 @@ export default function SummaryDashboard() {
 
         {/* BLAST & LINK SUMMARY */}
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-8">
-          <div class="px-5 py-4 border-b border-zinc-800 text-center">Separated By Blast QR & Link Invitation</div>
+          <div class="px-5 py-4 border-b border-zinc-800 text-center">
+            Separated By Blast QR & Link Invitation
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-2">
             <div>
-              <div class="bg-zinc-800 px-5 py-3 text-center font-bold">Users By Blast QR ({Object.values(summary().blastUsers || {}).reduce((sum, item) => sum + item.total, 0)})</div>
+              <div class="bg-zinc-800 px-5 py-3 text-center font-bold">
+                Users By Blast QR (
+                {Object.values(summary().blastUsers || {}).reduce(
+                  (sum, item) => sum + item.total,
+                  0,
+                )}
+                )
+              </div>
               <table class="w-full">
                 <thead>
-                  <tr class="bg-zinc-800"><th class="p-4 text-left">Category</th><th class="p-4 text-left">Registered</th><th class="p-4 text-left">Confirmed</th><th class="p-4 text-left">Attended</th></tr>
+                  <tr class="bg-zinc-800">
+                    <th class="p-4 text-left">Category</th>
+                    <th class="p-4 text-left">Registered</th>
+                    <th class="p-4 text-left">Confirmed</th>
+                    <th class="p-4 text-left">Attended</th>
+                  </tr>
                 </thead>
                 <tbody>
                   <For each={Object.entries(summary().blastUsers || {})}>
                     {([category, data]) => (
-                      <tr class="border-t border-zinc-800"><td class="p-4">{category}</td><td class="p-4">{data.total}</td><td class="p-4 text-blue-400">{data.confirmed}</td><td class="p-4 text-lime-400">{data.attended}</td></tr>
+                      <tr class="border-t border-zinc-800">
+                        <td class="p-4">{category}</td>
+                        <td class="p-4">{data.total}</td>
+                        <td class="p-4 text-blue-400">{data.confirmed}</td>
+                        <td class="p-4 text-lime-400">{data.attended}</td>
+                      </tr>
                     )}
                   </For>
                 </tbody>
               </table>
             </div>
             <div>
-              <div class="bg-zinc-800 px-5 py-3 text-center font-bold">Users By Link ({Object.values(summary().linkUsers || {}).reduce((sum, item) => sum + item.total, 0)})</div>
+              <div class="bg-zinc-800 px-5 py-3 text-center font-bold">
+                Users By Link (
+                {Object.values(summary().linkUsers || {}).reduce(
+                  (sum, item) => sum + item.total,
+                  0,
+                )}
+                )
+              </div>
               <table class="w-full">
                 <thead>
-                  <tr class="bg-zinc-800"><th class="p-4 text-left">Category</th><th class="p-4 text-left">Registered</th><th class="p-4 text-left">Confirmed</th><th class="p-4 text-left">Attended</th></tr>
+                  <tr class="bg-zinc-800">
+                    <th class="p-4 text-left">Category</th>
+                    <th class="p-4 text-left">Registered</th>
+                    <th class="p-4 text-left">Confirmed</th>
+                    <th class="p-4 text-left">Attended</th>
+                  </tr>
                 </thead>
                 <tbody>
                   <For each={Object.entries(summary().linkUsers || {})}>
                     {([category, data]) => (
-                      <tr class="border-t border-zinc-800"><td class="p-4">{category}</td><td class="p-4">{data.total}</td><td class="p-4 text-blue-400">{data.confirmed}</td><td class="p-4 text-lime-400">{data.attended}</td></tr>
+                      <tr class="border-t border-zinc-800">
+                        <td class="p-4">{category}</td>
+                        <td class="p-4">{data.total}</td>
+                        <td class="p-4 text-blue-400">{data.confirmed}</td>
+                        <td class="p-4 text-lime-400">{data.attended}</td>
+                      </tr>
                     )}
                   </For>
                 </tbody>
@@ -528,15 +717,27 @@ export default function SummaryDashboard() {
 
         {/* DEALER SUMMARY */}
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-8">
-          <div class="px-5 py-4 border-b border-zinc-800"><h2 class="text-xl font-semibold">Dealer Summary</h2></div>
+          <div class="px-5 py-4 border-b border-zinc-800">
+            <h2 class="text-xl font-semibold">Dealer Summary</h2>
+          </div>
           <table class="w-full">
             <thead>
-              <tr class="bg-zinc-800"><th class="p-4 text-left">Dealer</th><th class="p-4 text-left">Registered</th><th class="p-4 text-left">Confirmed</th><th class="p-4 text-left">Attended</th></tr>
+              <tr class="bg-zinc-800">
+                <th class="p-4 text-left">Dealer</th>
+                <th class="p-4 text-left">Registered</th>
+                <th class="p-4 text-left">Confirmed</th>
+                <th class="p-4 text-left">Attended</th>
+              </tr>
             </thead>
             <tbody>
               <For each={Object.entries(summary().dealers || {})}>
                 {([dealer, data]) => (
-                  <tr class="border-t border-zinc-800"><td class="p-4">{dealer}</td><td class="p-4">{data.total}</td><td class="p-4 text-blue-400">{data.confirmed}</td><td class="p-4 text-lime-400">{data.attended}</td></tr>
+                  <tr class="border-t border-zinc-800">
+                    <td class="p-4">{dealer}</td>
+                    <td class="p-4">{data.total}</td>
+                    <td class="p-4 text-blue-400">{data.confirmed}</td>
+                    <td class="p-4 text-lime-400">{data.attended}</td>
+                  </tr>
                 )}
               </For>
             </tbody>
@@ -545,15 +746,25 @@ export default function SummaryDashboard() {
 
         {/* DUMMY USERS */}
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-8">
-          <div class="px-5 py-4 border-b border-zinc-800"><h2 class="text-xl font-semibold">Generated QRs</h2></div>
+          <div class="px-5 py-4 border-b border-zinc-800">
+            <h2 class="text-xl font-semibold">Generated QRs</h2>
+          </div>
           <table class="w-full">
             <thead>
-              <tr class="bg-zinc-800"><th class="p-4 text-left">Category</th><th class="p-4 text-left">Generated</th><th class="p-4 text-left">Attended</th></tr>
+              <tr class="bg-zinc-800">
+                <th class="p-4 text-left">Category</th>
+                <th class="p-4 text-left">Generated</th>
+                <th class="p-4 text-left">Attended</th>
+              </tr>
             </thead>
             <tbody>
               <For each={Object.entries(summary().dummyUsers || {})}>
                 {([category, data]) => (
-                  <tr class="border-t border-zinc-800"><td class="p-4">{category}</td><td class="p-4 text-yellow-400">{data.generated}</td><td class="p-4 text-lime-400">{data.attended}</td></tr>
+                  <tr class="border-t border-zinc-800">
+                    <td class="p-4">{category}</td>
+                    <td class="p-4 text-yellow-400">{data.generated}</td>
+                    <td class="p-4 text-lime-400">{data.attended}</td>
+                  </tr>
                 )}
               </For>
             </tbody>
@@ -562,7 +773,9 @@ export default function SummaryDashboard() {
 
         {/* UPDATE TABEL: Vertical Attendance dengan penambahan Kolom Confirmed */}
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-          <div class="px-5 py-4 border-b border-zinc-800"><h2 class="text-xl font-semibold">Vertical Summary</h2></div>
+          <div class="px-5 py-4 border-b border-zinc-800">
+            <h2 class="text-xl font-semibold">Vertical Summary</h2>
+          </div>
           <table class="w-full">
             <thead>
               <tr class="bg-zinc-800">
@@ -597,14 +810,34 @@ export default function SummaryDashboard() {
                 placeholder="Search name, email, company..."
                 class="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 w-96 text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600"
               />
-              <select value={categoryFilter()} onChange={(e) => setCategoryFilter(e.currentTarget.value)} class="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3">
-                <option>ALL</option><option>VIP</option><option>VVIP</option><option>SUPER VVIP</option><option>DEALER</option><option>COMMUNITY</option><option>MEDIA</option><option>FRONT</option>
+              <select
+                value={categoryFilter()}
+                onChange={(e) => setCategoryFilter(e.currentTarget.value)}
+                class="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3"
+              >
+                <option>ALL</option>
+                <option>VIP</option>
+                <option>VVIP</option>
+                <option>SUPER VVIP</option>
+                <option>DEALER</option>
+                <option>COMMUNITY</option>
+                <option>MEDIA</option>
+                <option>FRONT</option>
               </select>
-              <select value={attendanceFilter()} onChange={(e) => setAttendanceFilter(e.currentTarget.value)} class="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3">
-                <option value="ALL">All Attendance</option><option value="attended">Attended</option><option value="pending">Not Attended</option>
+              <select
+                value={attendanceFilter()}
+                onChange={(e) => setAttendanceFilter(e.currentTarget.value)}
+                class="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3"
+              >
+                <option value="ALL">All Attendance</option>
+                <option value="attended">Attended</option>
+                <option value="pending">Not Attended</option>
               </select>
             </div>
-            <button onClick={downloadCSV} class="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-xl transition-colors font-medium text-sm">
+            <button
+              onClick={downloadCSV}
+              class="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-xl transition-colors font-medium text-sm"
+            >
               <Download size={16} /> Export CSV
             </button>
           </div>
@@ -613,21 +846,80 @@ export default function SummaryDashboard() {
             <table class="w-full text-sm">
               <thead class="sticky top-0 bg-zinc-800 z-10">
                 <tr>
-                  <th class="p-3 text-left"><button class="flex items-center gap-2" onClick={() => handleSort("name")}>Name <ArrowUpDown size={14} /></button></th>
-                  <th class="p-3 text-left"><button class="flex items-center gap-2" onClick={() => handleSort("category")}>Category <ArrowUpDown size={14} /></button></th>
-                  <th class="p-3 text-left"><button class="flex items-center gap-2" onClick={() => handleSort("company")}>Company <ArrowUpDown size={14} /></button></th>
-                  <th class="p-3 text-left"><button class="flex items-center gap-2" onClick={() => handleSort("email")}>Email <ArrowUpDown size={14} /></button></th>
-                  <th class="p-3 text-left"><button class="flex items-center gap-2 text-zinc-400 font-medium" onClick={() => handleSort("plus_one")}>Plus One Status <ArrowUpDown size={14} /></button></th>
-                  <th class="p-3 text-left"><button class="flex items-center gap-2" onClick={() => handleSort("status_confirmation")}>Confirmation <ArrowUpDown size={14} /></button></th>
-                  <th class="p-3 text-left"><button class="flex items-center gap-2" onClick={() => handleSort("status_attendance")}>Attendance <ArrowUpDown size={14} /></button></th>
-                  <th class="p-3 text-left"><button class="flex items-center gap-2" onClick={() => handleSort("vertical")}>Vertical <ArrowUpDown size={14} /></button></th>
+                  <th class="p-3 text-left">
+                    <button
+                      class="flex items-center gap-2"
+                      onClick={() => handleSort("name")}
+                    >
+                      Name <ArrowUpDown size={14} />
+                    </button>
+                  </th>
+                  <th class="p-3 text-left">
+                    <button
+                      class="flex items-center gap-2"
+                      onClick={() => handleSort("category")}
+                    >
+                      Category <ArrowUpDown size={14} />
+                    </button>
+                  </th>
+                  <th class="p-3 text-left">
+                    <button
+                      class="flex items-center gap-2"
+                      onClick={() => handleSort("company")}
+                    >
+                      Company <ArrowUpDown size={14} />
+                    </button>
+                  </th>
+                  <th class="p-3 text-left">
+                    <button
+                      class="flex items-center gap-2"
+                      onClick={() => handleSort("email")}
+                    >
+                      Email <ArrowUpDown size={14} />
+                    </button>
+                  </th>
+                  <th class="p-3 text-left">
+                    <button
+                      class="flex items-center gap-2 text-zinc-400 font-medium"
+                      onClick={() => handleSort("plus_one")}
+                    >
+                      Plus One Status <ArrowUpDown size={14} />
+                    </button>
+                  </th>
+                  <th class="p-3 text-left">
+                    <button
+                      class="flex items-center gap-2"
+                      onClick={() => handleSort("status_confirmation")}
+                    >
+                      Confirmation <ArrowUpDown size={14} />
+                    </button>
+                  </th>
+                  <th class="p-3 text-left">
+                    <button
+                      class="flex items-center gap-2"
+                      onClick={() => handleSort("status_attendance")}
+                    >
+                      Attendance <ArrowUpDown size={14} />
+                    </button>
+                  </th>
+                  <th class="p-3 text-left">
+                    <button
+                      class="flex items-center gap-2"
+                      onClick={() => handleSort("vertical")}
+                    >
+                      Vertical <ArrowUpDown size={14} />
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <For each={filteredUsers()}>
                   {(user) => {
-                    const isPlusOne = user.parent_name && user.parent_name.trim() !== "";
-                    const bringsPlusOne = user.email && parentEmailsSet().has(user.email.trim().toLowerCase());
+                    const isPlusOne =
+                      user.parent_name && user.parent_name.trim() !== "";
+                    const bringsPlusOne =
+                      user.email &&
+                      parentEmailsSet().has(user.email.trim().toLowerCase());
 
                     return (
                       <tr class="border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors">
@@ -635,7 +927,7 @@ export default function SummaryDashboard() {
                         <td class="p-3">{user.category}</td>
                         <td class="p-3">{user.company}</td>
                         <td class="p-3 text-zinc-400">{user.email}</td>
-                        
+
                         <td class="p-3">
                           <div class="flex flex-col gap-1.5 items-start relative z-20">
                             {isPlusOne && (
@@ -643,7 +935,10 @@ export default function SummaryDashboard() {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const inviterKey = user.parent_email?.trim() || user.parent_name?.trim() || "";
+                                  const inviterKey =
+                                    user.parent_email?.trim() ||
+                                    user.parent_name?.trim() ||
+                                    "";
                                   setSearch(inviterKey);
                                 }}
                                 class="px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-950/60 text-purple-400 border border-purple-800/50 hover:bg-purple-900/80 transition-colors text-left cursor-pointer pointer-events-auto"
@@ -652,7 +947,7 @@ export default function SummaryDashboard() {
                                 +1 of {user.parent_name}
                               </button>
                             )}
-                            
+
                             {bringsPlusOne && (
                               <button
                                 type="button"
@@ -667,13 +962,35 @@ export default function SummaryDashboard() {
                                 Brings +1
                               </button>
                             )}
-                            
-                            {!isPlusOne && !bringsPlusOne && <span class="text-zinc-600 pl-2">-</span>}
+
+                            {!isPlusOne && !bringsPlusOne && (
+                              <span class="text-zinc-600 pl-2">-</span>
+                            )}
                           </div>
                         </td>
 
-                        <td class="p-3"><span class={user.status_confirmation === "confirmed" ? "text-blue-400" : "text-zinc-500"}>{user.status_confirmation}</span></td>
-                        <td class="p-3"><span class={user.status_attendance === "attended" ? "text-lime-400" : "text-zinc-500"}>{user.status_attendance}</span></td>
+                        <td class="p-3">
+                          <span
+                            class={
+                              user.status_confirmation === "confirmed"
+                                ? "text-blue-400"
+                                : "text-zinc-500"
+                            }
+                          >
+                            {user.status_confirmation}
+                          </span>
+                        </td>
+                        <td class="p-3">
+                          <span
+                            class={
+                              user.status_attendance === "attended"
+                                ? "text-lime-400"
+                                : "text-zinc-500"
+                            }
+                          >
+                            {user.status_attendance}
+                          </span>
+                        </td>
                         <td class="p-3 text-zinc-400">{user.vertical}</td>
                       </tr>
                     );
@@ -691,37 +1008,75 @@ export default function SummaryDashboard() {
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-[500px]">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-2xl font-bold mb-6">Scan QR Code</h2>
-              <button class="mb-4 text-zinc-400 hover:text-white" onClick={stopScanner}>Close</button>
+              <button
+                class="mb-4 text-zinc-400 hover:text-white"
+                onClick={stopScanner}
+              >
+                Close
+              </button>
             </div>
             <div class="w-full aspect-[4/3] max-w-[450px] mx-auto rounded-2xl overflow-hidden relative">
               <div id="reader" class="w-full h-full mx-auto" />
               <Show when={!scannerStarted()}>
-                <div class="absolute inset-0 bg-zinc-950 border border-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500 z-10">Scanner Closed</div>
+                <div class="absolute inset-0 bg-zinc-950 border border-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500 z-10">
+                  Scanner Closed
+                </div>
               </Show>
             </div>
-            <button onClick={startScanner} disabled={scannerStarted()} class="mt-6 w-full py-4 rounded-xl bg-lime-400 text-black font-bold disabled:opacity-50">
+            <button
+              onClick={startScanner}
+              disabled={scannerStarted()}
+              class="mt-6 w-full py-4 rounded-xl bg-lime-400 text-black font-bold disabled:opacity-50"
+            >
               {scannerStarted() ? "Scanning..." : "Start Scanner"}
             </button>
           </div>
 
           <Show when={participant()}>
             <div class="space-y-4 w-full">
-              <div><div class="text-zinc-400">Name</div><div>{participant().name}</div></div>
-              <div><div class="text-zinc-400">Email</div><div>{participant().email}</div></div>
-              <div><div class="text-zinc-400">Company</div><div>{participant().company}</div></div>
-              <div><div class="text-zinc-400">Category</div><div>{participant().category}</div></div>
-              <div><div class="text-zinc-400">Vertical</div><div>{participant().vertical}</div></div>
+              <div>
+                <div class="text-zinc-400">Name</div>
+                <div>{participant().name}</div>
+              </div>
+              <div>
+                <div class="text-zinc-400">Email</div>
+                <div>{participant().email}</div>
+              </div>
+              <div>
+                <div class="text-zinc-400">Company</div>
+                <div>{participant().company}</div>
+              </div>
+              <div>
+                <div class="text-zinc-400">Category</div>
+                <div>{participant().category}</div>
+              </div>
+              <div>
+                <div class="text-zinc-400">Vertical</div>
+                <div>{participant().vertical}</div>
+              </div>
               <Show when={participant().plusOneOf}>
-                <div><div class="text-zinc-400">Plus One Of</div><div class="text-yellow-400 font-semibold">{participant().plusOneOf}</div></div>
+                <div>
+                  <div class="text-zinc-400">Plus One Of</div>
+                  <div class="text-yellow-400 font-semibold">
+                    {participant().plusOneOf}
+                  </div>
+                </div>
               </Show>
               <div class={`border rounded-2xl p-5 ${style().border}`}>
-                <div class="text-2xl text-lime-400 font-bold">✓ ATTENDANCE CONFIRMED</div>
+                <div class="text-2xl text-lime-400 font-bold">
+                  ✓ ATTENDANCE CONFIRMED
+                </div>
                 <div class="mt-2 text-zinc-300">Participant data is valid.</div>
                 <Show when={isMerchandiseEligible()}>
-                  <div class="mt-4 p-4 rounded-xl border border-orange-400 bg-orange-500/10 text-orange-300 font-bold text-center">🎁 THIS USER IS ELIGIBLE FOR MERCHANDISE</div>
+                  <div class="mt-4 p-4 rounded-xl border border-orange-400 bg-orange-500/10 text-orange-300 font-bold text-center">
+                    🎁 THIS USER IS ELIGIBLE FOR MERCHANDISE
+                  </div>
                 </Show>
-                <button class={`mt-8 w-full py-5 rounded-xl font-bold text-xl text-black ${categoryColor[participant()?.category]?.bg || 'bg-zinc-700'}`}>
-                  {categoryColor[participant()?.category]?.label || 'REGULAR'} WRISTBAND
+                <button
+                  class={`mt-8 w-full py-5 rounded-xl font-bold text-xl text-black ${categoryColor[participant()?.category]?.bg || "bg-zinc-700"}`}
+                >
+                  {categoryColor[participant()?.category]?.label || "REGULAR"}{" "}
+                  WRISTBAND
                 </button>
               </div>
             </div>
@@ -729,15 +1084,30 @@ export default function SummaryDashboard() {
         </div>
 
         {/* HISTORY DRAWER */}
-        <div class={`fixed top-0 right-0 h-screen w-96 bg-zinc-950 border-l border-zinc-800 transition-all duration-300 z-50 ${showHistory() ? "translate-x-0" : "translate-x-full"}`}>
-          <div class="p-5 flex justify-between border-b border-zinc-800"><h2 class="text-xl font-bold">Scan History</h2><button onClick={() => setShowHistory(false)}><ChevronRight /></button></div>
+        <div
+          class={`fixed top-0 right-0 h-screen w-96 bg-zinc-950 border-l border-zinc-800 transition-all duration-300 z-50 ${showHistory() ? "translate-x-0" : "translate-x-full"}`}
+        >
+          <div class="p-5 flex justify-between border-b border-zinc-800">
+            <h2 class="text-xl font-bold">Scan History</h2>
+            <button onClick={() => setShowHistory(false)}>
+              <ChevronRight />
+            </button>
+          </div>
           <div class="overflow-y-auto h-full p-4 space-y-3 pb-24">
             <For each={scanHistory()}>
               {(item) => (
                 <div class="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                  <div class="font-bold text-lg">{item.name}</div><div class="text-zinc-400 text-sm">{item.company}</div>
-                  <Show when={item.plusOneOf}><div class="mt-2 text-xs text-yellow-400">+1 Of: {item.plusOneOf}</div></Show>
-                  <div class="mt-2 flex justify-between"><span class="text-lime-400">{item.category}</span><span class="text-zinc-500 text-sm">{item.time}</span></div>
+                  <div class="font-bold text-lg">{item.name}</div>
+                  <div class="text-zinc-400 text-sm">{item.company}</div>
+                  <Show when={item.plusOneOf}>
+                    <div class="mt-2 text-xs text-yellow-400">
+                      +1 Of: {item.plusOneOf}
+                    </div>
+                  </Show>
+                  <div class="mt-2 flex justify-between">
+                    <span class="text-lime-400">{item.category}</span>
+                    <span class="text-zinc-500 text-sm">{item.time}</span>
+                  </div>
                 </div>
               )}
             </For>
