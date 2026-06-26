@@ -15,6 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Copy,
+  Check,
 } from "lucide-solid";
 import { Html5Qrcode } from "html5-qrcode";
 
@@ -41,6 +43,7 @@ export default function SummaryDashboard() {
   const [scanHistory, setScanHistory] = createSignal(
     JSON.parse(localStorage.getItem("scanHistory") || "[]"),
   );
+  const [copiedId, setCopiedId] = createSignal("");
   const navigate = useNavigate();
 
   let ws;
@@ -782,7 +785,8 @@ export default function SummaryDashboard() {
             <thead>
               <tr class="bg-zinc-800">
                 <th class="p-4 text-left">Vertical</th>
-                <th class="p-4 text-left">Registered</th> {/* <--- Kolom Baru */}
+                <th class="p-4 text-left">Registered</th>{" "}
+                {/* <--- Kolom Baru */}
                 <th class="p-4 text-left">Confirmed</th>
                 <th class="p-4 text-left">Attended</th>
               </tr>
@@ -792,7 +796,8 @@ export default function SummaryDashboard() {
                 {([vertical, data]) => (
                   <tr class="border-t border-zinc-800">
                     <td class="p-4">{vertical}</td>
-                    <td class="p-4 text-zinc-300">{data.total}</td> {/* <--- Tampilkan properti data.total */}
+                    <td class="p-4 text-zinc-300">{data.total}</td>{" "}
+                    {/* <--- Tampilkan properti data.total */}
                     <td class="p-4 text-blue-400">{data.confirmed}</td>
                     <td class="p-4 text-lime-400">{data.attended}</td>
                   </tr>
@@ -914,6 +919,10 @@ export default function SummaryDashboard() {
                       Vertical <ArrowUpDown size={14} />
                     </button>
                   </th>
+                  {/* Tambahan Header Baru */}
+                  <th class="p-3 text-left text-zinc-400 font-medium">
+                    QR Link
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -924,6 +933,9 @@ export default function SummaryDashboard() {
                     const bringsPlusOne =
                       user.email &&
                       parentEmailsSet().has(user.email.trim().toLowerCase());
+
+                    // Tentukan baseurl di sini atau ambil dari env/props
+                    const baseurl = "https://rsvp.xpengvisionnight.co.id/rsvp";
 
                     return (
                       <tr class="border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors">
@@ -994,6 +1006,40 @@ export default function SummaryDashboard() {
                           </span>
                         </td>
                         <td class="p-3 text-zinc-400">{user.vertical}</td>
+                        <td class="p-3">
+                          <div class="flex items-center gap-3">
+                            {/* Teks link dipendekin jadi "Open Link ↗" */}
+                            <a
+                              href={`${baseurl}/${user.uniqueId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="text-sky-400 hover:text-sky-300 hover:underline text-xs font-medium shrink-0"
+                            >
+                              Open Link ↗
+                            </a>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const url = `${baseurl}/${user.uniqueId}`;
+                                navigator.clipboard.writeText(url);
+
+                                setCopiedId(user.uniqueId);
+                                setTimeout(() => setCopiedId(""), 2000);
+                              }}
+                              class="p-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-colors shrink-0 cursor-pointer"
+                              title="Copy Link"
+                            >
+                              <Show
+                                when={copiedId() === user.uniqueId}
+                                fallback={<Copy size={14} />}
+                              >
+                                <Check size={14} class="text-lime-400" />
+                              </Show>
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   }}
