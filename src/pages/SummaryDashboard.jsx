@@ -73,7 +73,6 @@ export default function SummaryDashboard() {
 
         if (errorText === "User does not exist") {
           title = "QR Tidak Terdaftar";
-
           errorText = "Silahkan hubungi Helpdesk";
         } else if (errorText.includes("already attended at")) {
           const [name, dateText] = errorText.split(" already attended at ");
@@ -89,10 +88,10 @@ export default function SummaryDashboard() {
           icon: "warning",
           title,
           html: `
-      <div class="text-zinc-300 whitespace-pre-line">
-        ${errorText}
-      </div>
-    `,
+            <div class="text-zinc-300 whitespace-pre-line">
+              ${errorText}
+            </div>
+          `,
           background: "#09090b",
           color: "#fff",
           confirmButtonText: "OK",
@@ -136,51 +135,43 @@ export default function SummaryDashboard() {
             ];
 
             const limitedHistory = newHistory.slice(0, 100);
-
             localStorage.setItem("scanHistory", JSON.stringify(limitedHistory));
-
             return limitedHistory;
           });
           Swal.fire({
             icon: "success",
             title: "Attendance Confirmed",
             html: `
-  <div class="text-zinc-300">
-    <div class="font-semibold">
-      ${message.name} (${message.category})
-    </div>
-
-    <div class="text-zinc-400 text-sm">
-      ${message.company}
-    </div>
-
-    ${
-      message.plusOneOf
-        ? `
-        <div class="mt-3 p-2 rounded-lg border border-yellow-400 bg-yellow-500/10 text-yellow-300">
-          +1 Of: ${message.plusOneOf}
-        </div>
-      `
-        : ""
-    }
-  </div>
-`,
+              <div class="text-zinc-300">
+                <div class="font-semibold">
+                  ${message.name} (${message.category})
+                </div>
+                <div class="text-zinc-400 text-sm">
+                  ${message.company}
+                </div>
+                ${
+                  message.plusOneOf
+                    ? `
+                    <div class="mt-3 p-2 rounded-lg border border-yellow-400 bg-yellow-500/10 text-yellow-300">
+                      +1 Of: ${message.plusOneOf}
+                    </div>
+                  `
+                    : ""
+                }
+              </div>
+            `,
             background: "#09090b",
             color: "#ffffff",
             confirmButtonText: "CONTINUE",
             confirmButtonColor: "#a3e635",
             allowOutsideClick: false,
             allowEscapeKey: false,
-
             customClass: {
               popup:
                 "border border-lime-400 rounded-2xl shadow-[0_0_30px_rgba(163,230,53,0.35)]",
               title: "text-lime-400",
               confirmButton: "!text-black font-bold rounded-xl px-8 py-3",
             },
-          }).then((result) => {
-            if (result.isConfirmed) {
-            }
           });
       }
     };
@@ -255,7 +246,6 @@ export default function SummaryDashboard() {
         if (sortDirection() === "asc") {
           return String(aValue).localeCompare(String(bValue));
         }
-
         return String(bValue).localeCompare(String(aValue));
       });
     }
@@ -480,17 +470,23 @@ export default function SummaryDashboard() {
     ]);
     return [...categories];
   });
-
-  // MEMO BARU: Menghitung summary vertical (Confirmed & Attended) secara mandiri dari users()
   const verticalSummaryMemo = createMemo(() => {
     const result = {};
+
     users().forEach((user) => {
-      const vertical = user.vertical?.trim() || "UNKNOWN";
-      if (vertical === "" || vertical === " ") return;
+      const vertical = user.vertical?.trim();
+
+      // VALIDASI: Jika tidak ada data vertical, atau vertical-nya kosong/"UNKNOWN", langsung skip.
+      // Ini otomatis mendepak Generated QR (Dummy Users) dari hitungan Vertical Summary.
+      if (!vertical || vertical === "" || vertical === "UNKNOWN") return;
 
       if (!result[vertical]) {
-        result[vertical] = { confirmed: 0, attended: 0 };
+        result[vertical] = { total: 0, confirmed: 0, attended: 0 };
       }
+
+      // Hanya user riil ber-vertical yang masuk ke sini
+      result[vertical].total++;
+
       if (user.status_confirmation?.trim() === "confirmed") {
         result[vertical].confirmed++;
       }
@@ -498,6 +494,7 @@ export default function SummaryDashboard() {
         result[vertical].attended++;
       }
     });
+
     return result;
   });
 
@@ -570,6 +567,7 @@ export default function SummaryDashboard() {
             </div>
           </div>
         </div>
+
         {/* COMBINED USERS */}
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-8">
           <div class="bg-lime-400 text-black px-5 py-3 text-center font-bold">
@@ -604,11 +602,14 @@ export default function SummaryDashboard() {
                     "SVVIP",
                     "SALES LIVE STREAM",
                   ].includes(category);
-                  const remainingQuota = isNonRegistrationCategory
-                    ? "-"
-                    : quota !== undefined
-                      ? quota - data().confirmed
-                      : "-";
+
+                  // UBAH DI SINI: Dibungkus fungsi getter () => {} agar reaktif
+                  const remainingQuota = () =>
+                    isNonRegistrationCategory
+                      ? "-"
+                      : quota !== undefined
+                        ? quota - data().confirmed
+                        : "-";
 
                   return (
                     <tr class="border-t border-zinc-800">
@@ -627,7 +628,8 @@ export default function SummaryDashboard() {
                       <td
                         class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : "text-yellow-400"}`}
                       >
-                        {remainingQuota}
+                        {/* JANGAN LUPA: Panggil sebagai fungsi dengan tanda kurung () */}
+                        {remainingQuota()}
                       </td>
                       <td
                         class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : "text-lime-400"}`}
@@ -771,7 +773,7 @@ export default function SummaryDashboard() {
           </table>
         </div>
 
-        {/* UPDATE TABEL: Vertical Attendance dengan penambahan Kolom Confirmed */}
+        {/* VERTICAL SUMMARY */}
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
           <div class="px-5 py-4 border-b border-zinc-800">
             <h2 class="text-xl font-semibold">Vertical Summary</h2>
@@ -780,6 +782,7 @@ export default function SummaryDashboard() {
             <thead>
               <tr class="bg-zinc-800">
                 <th class="p-4 text-left">Vertical</th>
+                <th class="p-4 text-left">Registered</th> {/* <--- Kolom Baru */}
                 <th class="p-4 text-left">Confirmed</th>
                 <th class="p-4 text-left">Attended</th>
               </tr>
@@ -789,6 +792,7 @@ export default function SummaryDashboard() {
                 {([vertical, data]) => (
                   <tr class="border-t border-zinc-800">
                     <td class="p-4">{vertical}</td>
+                    <td class="p-4 text-zinc-300">{data.total}</td> {/* <--- Tampilkan properti data.total */}
                     <td class="p-4 text-blue-400">{data.confirmed}</td>
                     <td class="p-4 text-lime-400">{data.attended}</td>
                   </tr>
@@ -927,7 +931,6 @@ export default function SummaryDashboard() {
                         <td class="p-3">{user.category}</td>
                         <td class="p-3">{user.company}</td>
                         <td class="p-3 text-zinc-400">{user.email}</td>
-
                         <td class="p-3">
                           <div class="flex flex-col gap-1.5 items-start relative z-20">
                             {isPlusOne && (
@@ -941,7 +944,7 @@ export default function SummaryDashboard() {
                                     "";
                                   setSearch(inviterKey);
                                 }}
-                                class="px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-950/60 text-purple-400 border border-purple-800/50 hover:bg-purple-900/80 transition-colors text-left cursor-pointer pointer-events-auto"
+                                class="px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-950/60 text-purple-400 border border-purple-800/50 hover:bg-purple-900/80 transition-colors text-left cursor-pointer"
                                 title="Click to view inviter"
                               >
                                 +1 of {user.parent_name}
@@ -956,7 +959,7 @@ export default function SummaryDashboard() {
                                   const mainEmail = user.email?.trim() || "";
                                   setSearch(mainEmail);
                                 }}
-                                class="px-2.5 py-0.5 text-xs font-medium rounded-full bg-cyan-950/60 text-cyan-400 border border-cyan-800/50 hover:bg-cyan-900/80 transition-colors text-left cursor-pointer pointer-events-auto"
+                                class="px-2.5 py-0.5 text-xs font-medium rounded-full bg-cyan-950/60 text-cyan-400 border border-cyan-800/50 hover:bg-cyan-900/80 transition-colors text-left cursor-pointer"
                                 title="Click to filter this guest and their +1"
                               >
                                 Brings +1
@@ -968,7 +971,6 @@ export default function SummaryDashboard() {
                             )}
                           </div>
                         </td>
-
                         <td class="p-3">
                           <span
                             class={
@@ -1034,34 +1036,43 @@ export default function SummaryDashboard() {
 
           <Show when={participant()}>
             <div class="space-y-4 w-full">
-              <div>
-                <div class="text-zinc-400">Name</div>
-                <div>{participant().name}</div>
-              </div>
-              <div>
-                <div class="text-zinc-400">Email</div>
-                <div>{participant().email}</div>
-              </div>
-              <div>
-                <div class="text-zinc-400">Company</div>
-                <div>{participant().company}</div>
-              </div>
-              <div>
-                <div class="text-zinc-400">Category</div>
-                <div>{participant().category}</div>
-              </div>
-              <div>
-                <div class="text-zinc-400">Vertical</div>
-                <div>{participant().vertical}</div>
-              </div>
-              <Show when={participant().plusOneOf}>
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-4 bg-zinc-900/50 p-4 border border-zinc-800 rounded-xl text-sm">
                 <div>
-                  <div class="text-zinc-400">Plus One Of</div>
-                  <div class="text-yellow-400 font-semibold">
-                    {participant().plusOneOf}
+                  <div class="text-zinc-500">Name</div>
+                  <div class="font-medium">{participant().name}</div>
+                </div>
+                <div>
+                  <div class="text-zinc-500">Email</div>
+                  <div class="font-medium text-zinc-400">
+                    {participant().email}
                   </div>
                 </div>
-              </Show>
+                <div>
+                  <div class="text-zinc-500">Company</div>
+                  <div class="font-medium">{participant().company}</div>
+                </div>
+                <div>
+                  <div class="text-zinc-500">Category</div>
+                  <div class="font-medium text-lime-400">
+                    {participant().category}
+                  </div>
+                </div>
+                <div>
+                  <div class="text-zinc-500">Vertical</div>
+                  <div class="font-medium text-zinc-400">
+                    {participant().vertical}
+                  </div>
+                </div>
+                <Show when={participant().plusOneOf}>
+                  <div>
+                    <div class="text-zinc-500">Plus One Of</div>
+                    <div class="text-yellow-400 font-semibold">
+                      {participant().plusOneOf}
+                    </div>
+                  </div>
+                </Show>
+              </div>
+
               <div class={`border rounded-2xl p-5 ${style().border}`}>
                 <div class="text-2xl text-lime-400 font-bold">
                   ✓ ATTENDANCE CONFIRMED
