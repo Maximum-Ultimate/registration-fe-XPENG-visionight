@@ -40,6 +40,7 @@ export default function SummaryDashboard() {
   const [sortBy, setSortBy] = createSignal("");
   const [sortDirection, setSortDirection] = createSignal("asc");
   const [showHistory, setShowHistory] = createSignal(false);
+  const [lastSentName, setLastSentName] = createSignal("");
   const [scanHistory, setScanHistory] = createSignal(
     JSON.parse(localStorage.getItem("scanHistory") || "[]"),
   );
@@ -67,7 +68,6 @@ export default function SummaryDashboard() {
 
     ws.onmessage = async (event) => {
       const message = JSON.parse(event.data);
-
       if (message.status === "error") {
         await stopScanner();
 
@@ -113,7 +113,34 @@ export default function SummaryDashboard() {
 
         return;
       }
-
+      // Potongan kode di dalam ws.onmessage
+      if (
+        message.status === 200 &&
+        message.message === "Invitations sent successfully"
+      ) {
+        Swal.fire({
+          icon: "success",
+          title: "Invitations Sent",
+          html: `
+      <div class="text-zinc-300">
+        Invitations sent successfully to <span class="font-semibold text-white">${lastSentName()}</span>
+      </div>
+    `,
+          background: "#09090b",
+          color: "#ffffff",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#a3e635",
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          customClass: {
+            popup:
+              "border border-lime-400 rounded-2xl shadow-[0_0_30px_rgba(163,230,53,0.35)]",
+            title: "text-lime-400",
+            confirmButton: "!text-black font-bold rounded-xl px-8 py-3",
+          },
+        });
+        return;
+      }
       switch (message.type) {
         case "DASHBOARD_SUMMARY":
           setSummary(message.data);
@@ -125,7 +152,6 @@ export default function SummaryDashboard() {
 
         case "attend-confirm":
           await stopScanner();
-
           setParticipant(message);
           localStorage.setItem("lastParticipant", JSON.stringify(message));
           setScanHistory((prev) => {
@@ -193,7 +219,6 @@ export default function SummaryDashboard() {
     });
     return set;
   });
-
   const filteredUsers = () => {
     let data = users().filter((user) => {
       const keyword = search().trim().toLowerCase();
@@ -255,7 +280,6 @@ export default function SummaryDashboard() {
 
     return data;
   };
-
   const handleSort = (field) => {
     if (sortBy() === field) {
       setSortDirection(sortDirection() === "asc" ? "desc" : "asc");
@@ -264,7 +288,6 @@ export default function SummaryDashboard() {
       setSortDirection("asc");
     }
   };
-
   const downloadCSV = () => {
     const dataToExport = filteredUsers();
     const emailsWithPlusOne = parentEmailsSet();
@@ -316,7 +339,51 @@ export default function SummaryDashboard() {
     link.click();
     document.body.removeChild(link);
   };
+  const handleSendEmail = (uniqueId, name) => {
+    const bodyPayload = {
+      action: "DIRECT_INVITE_USERS",
+      payload: {
+        userIdas: [uniqueId],
+      },
+    };
 
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      // Simpan nama untuk dipakai di ws.onmessage nanti
+      setLastSentName(name);
+
+      // Tampilkan Loading "Sending to..."
+      Swal.fire({
+        title: "Sending Invitation",
+        html: `
+        <div class="text-zinc-300">
+          Sending email to <span class="font-semibold text-white">${name}</span>...
+        </div>
+      `,
+        background: "#09090b",
+        color: "#ffffff",
+        allowOutsideClick: false, // Biar ga sengaja ketutup pas nge-klik luar
+        allowEscapeKey: false, // Biar ga bisa ditutup pakai tombol Esc
+        didOpen: () => {
+          Swal.showLoading(); // Memunculkan spinner loading bawaan Swal
+        },
+        customClass: {
+          popup: "border border-zinc-800 rounded-2xl shadow-2xl",
+        },
+      });
+
+      // Kirim data lewat WebSocket
+      ws.send(JSON.stringify(bodyPayload));
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Koneksi WebSocket terputus!",
+        background: "#09090b",
+        color: "#ffffff",
+        confirmButtonColor: "#a3e635",
+      });
+    }
+  };
   const startScanner = async () => {
     if (scannerStarted()) return;
     try {
@@ -340,7 +407,6 @@ export default function SummaryDashboard() {
       console.error(err);
     }
   };
-
   const stopScanner = async () => {
     try {
       if (scanner && scannerStarted()) {
@@ -353,7 +419,6 @@ export default function SummaryDashboard() {
     }
     setScannerStarted(false);
   };
-
   const categoryColor = {
     VVIP: { bg: "bg-yellow-400", border: "border-yellow-400", label: "GOLD" },
     VIP: { bg: "bg-gray-300", border: "border-gray-300", label: "SILVER" },
@@ -375,7 +440,6 @@ export default function SummaryDashboard() {
     },
     FRONT: { bg: "bg-violet-300", border: "border-violet-300", label: "LILAC" },
   };
-
   const merchandiseEligibleVerticals = [
     "Dealer Management 3rd Party",
     "Business Partner Aftersales",
@@ -391,7 +455,6 @@ export default function SummaryDashboard() {
     "Online Activation ( Socmed)",
     "Prospect Leasing",
   ];
-
   const nonEligibleVipCompanies = [
     "XPENG AFTERSALES EIVO",
     "EAL",
@@ -426,11 +489,9 @@ export default function SummaryDashboard() {
     "Automotive",
     "Urban Republic - Erajaya",
   ].map((c) => c.toLowerCase().trim());
-
   const style = createMemo(
     () => categoryColor[participant()?.category] || categoryColor.VIP,
   );
-
   const isMerchandiseEligible = () => {
     const verticalEligible = merchandiseEligibleVerticals.includes(
       participant()?.vertical || "",
@@ -441,7 +502,6 @@ export default function SummaryDashboard() {
       nonEligibleVipCompanies.some((c) => company.includes(c.toLowerCase()));
     return verticalEligible && !vipBlocked;
   };
-
   const displaySummary = createMemo(() => {
     const result = {};
     Object.entries(summary().realUsers || {}).forEach(([category, data]) => {
@@ -453,7 +513,6 @@ export default function SummaryDashboard() {
     });
     return result;
   });
-
   const categoryQuota = {
     VIP: 620,
     DEALER: 470,
@@ -465,7 +524,6 @@ export default function SummaryDashboard() {
     VVIP: 60,
     "SALES LIVE STREAM": 48,
   };
-
   const tableCategories = createMemo(() => {
     const categories = new Set([
       ...Object.keys(displaySummary()),
@@ -475,7 +533,6 @@ export default function SummaryDashboard() {
   });
   const verticalSummaryMemo = createMemo(() => {
     const result = {};
-
     users().forEach((user) => {
       const vertical = user.vertical?.trim();
 
@@ -497,7 +554,6 @@ export default function SummaryDashboard() {
         result[vertical].attended++;
       }
     });
-
     return result;
   });
 
@@ -508,7 +564,6 @@ export default function SummaryDashboard() {
         <h1 class="text-4xl font-bold">XPENG V1SION NIGHT</h1>
         <p class="text-zinc-400 mt-2">Live Dashboard Summary</p>
       </div>
-
       <div class="flex items-center justify-between mb-8">
         <div class="flex gap-3">
           <button
@@ -541,7 +596,6 @@ export default function SummaryDashboard() {
           </button>
         </Show>
       </div>
-
       {/* SUMMARY TAB */}
       <Show when={activeTab() === "summary"}>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -807,7 +861,6 @@ export default function SummaryDashboard() {
           </table>
         </div>
       </Show>
-
       {/* DETAILS TAB */}
       <Show when={activeTab() === "details"}>
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
@@ -919,7 +972,10 @@ export default function SummaryDashboard() {
                       Vertical <ArrowUpDown size={14} />
                     </button>
                   </th>
-                  {/* Tambahan Header Baru */}
+                  {/* Diubah dari Email menjadi Email Sender */}
+                  <th class="p-3 text-left text-zinc-400 font-medium">
+                    Email Sender
+                  </th>
                   <th class="p-3 text-left text-zinc-400 font-medium">
                     QR Link
                   </th>
@@ -934,7 +990,6 @@ export default function SummaryDashboard() {
                       user.email &&
                       parentEmailsSet().has(user.email.trim().toLowerCase());
 
-                    // Tentukan baseurl di sini atau ambil dari env/props
                     const baseurl = "https://rsvp.xpengvisionnight.co.id/rsvp";
 
                     return (
@@ -1006,9 +1061,32 @@ export default function SummaryDashboard() {
                           </span>
                         </td>
                         <td class="p-3 text-zinc-400">{user.vertical}</td>
+
+                        {/* Kolom Baru: Email Sender */}
+                        <td class="p-3">
+                          {!isPlusOne ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSendEmail(user.uniqueId, user.email);
+                              }}
+                              class="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer shadow-sm"
+                            >
+                              Send
+                            </button>
+                          ) : (
+                            <span
+                              class="text-zinc-600 pl-3"
+                              title="Plus One tidak menerima email terpisah"
+                            >
+                              -
+                            </span>
+                          )}
+                        </td>
+
                         <td class="p-3">
                           <div class="flex items-center gap-3">
-                            {/* Teks link dipendekin jadi "Open Link ↗" */}
                             <a
                               href={`${baseurl}/${user.uniqueId}`}
                               target="_blank"
@@ -1049,7 +1127,6 @@ export default function SummaryDashboard() {
           </div>
         </div>
       </Show>
-
       {/* SCANNER TAB */}
       <Show when={activeTab() === "scanner"}>
         <div class="grid grid-cols-1 xl:grid-cols-[500px_1fr] gap-6">
