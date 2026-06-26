@@ -531,6 +531,14 @@ export default function SummaryDashboard() {
     ]);
     return [...categories];
   });
+  const clearHistory = () => {
+    const confirmClear = confirm(
+      "Apakah kamu yakin ingin menghapus semua riwayat scan?",
+    );
+    if (confirmClear) {
+      setScanHistory([]);
+    }
+  };
   const verticalSummaryMemo = createMemo(() => {
     const result = {};
     users().forEach((user) => {
@@ -1218,16 +1226,39 @@ export default function SummaryDashboard() {
         </div>
 
         {/* HISTORY DRAWER */}
-        <div
-          class={`fixed top-0 right-0 h-screen w-96 bg-zinc-950 border-l border-zinc-800 transition-all duration-300 z-50 ${showHistory() ? "translate-x-0" : "translate-x-full"}`}
+        <div class={`fixed top-0 right-0 h-screen w-96 bg-zinc-950 border-l border-zinc-800 transition-all duration-300 z-50 ${showHistory() ? "translate-x-0" : "translate-x-full"}`}
         >
-          <div class="p-5 flex justify-between border-b border-zinc-800">
+          <div class="p-5 flex justify-between items-center border-b border-zinc-800">
             <h2 class="text-xl font-bold">Scan History</h2>
-            <button onClick={() => setShowHistory(false)}>
-              <ChevronRight />
-            </button>
+
+            <div class="flex items-center gap-4">
+              {/* TOMBOL CLEAR HISTORY */}
+              <Show when={scanHistory().length > 0}>
+                <button
+                  onClick={clearHistory}
+                  class="text-sm text-red-400 hover:text-red-300 transition-colors font-medium"
+                >
+                  Clear All
+                </button>
+              </Show>
+
+              <button
+                onClick={() => setShowHistory(false)}
+                class="text-zinc-400 hover:text-white"
+              >
+                <ChevronRight />
+              </button>
+            </div>
           </div>
+
           <div class="overflow-y-auto h-full p-4 space-y-3 pb-24">
+            {/* TAMPILAN JIKA HISTORY KOSONG */}
+            <Show when={scanHistory().length === 0}>
+              <div class="text-center text-zinc-600 mt-10 text-sm">
+                Belum ada riwayat scan.
+              </div>
+            </Show>
+
             <For each={scanHistory()}>
               {(item) => (
                 <div class="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
