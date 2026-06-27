@@ -47,6 +47,7 @@ export default function SummaryDashboard() {
   const [scanHistory, setScanHistory] = createSignal(
     JSON.parse(localStorage.getItem("scanHistory") || "[]"),
   );
+  const [manualHistory, setManualHistory] = createSignal([]);
   const [copiedId, setCopiedId] = createSignal("");
   const navigate = useNavigate();
 
@@ -462,49 +463,65 @@ export default function SummaryDashboard() {
       });
     }
   };
-  const handleAttend = (uniqueId, name) => {
+  const handleAttend = (user) => {
     const bodyPayload = {
       action: "ATTEND",
       payload: {
-        attendUniqueId: uniqueId,
+        attendUniqueId: user.uniqueId,
       },
     };
 
     if (ws && ws.readyState === WebSocket.OPEN) {
-      // Opsional: Simpan nama ke state jika kamu butuh validasi di ws.onmessage nanti
-      // setLastAttendedName(name);
-
-      // Tampilkan Loading "Checking in..." dengan style zinc/dark
+      // Tampilkan Loading Swal
       Swal.fire({
         title: "Processing Attendance",
         html: `
-      <div class="text-zinc-300">
-        Checking in <span class="font-semibold text-white">${name}</span>...
-      </div>
-    `,
+        <div class="text-zinc-300">
+          Checking in <span class="font-semibold text-white">${user.name}</span>...
+        </div>
+      `,
         background: "#09090b",
         color: "#ffffff",
-        allowOutsideClick: false, // Biar ga sengaja ketutup pas nge-klik luar
-        allowEscapeKey: false, // Biar ga bisa ditutup pakai tombol Esc
+        allowOutsideClick: false,
+        allowEscapeKey: false,
         didOpen: () => {
-          Swal.showLoading(); // Memunculkan spinner loading bawaan Swal
+          Swal.showLoading();
         },
-        customClass: {
-          popup: "border border-zinc-800 rounded-2xl shadow-2xl",
-        },
+        customClass: { popup: "border border-zinc-800 rounded-2xl shadow-2xl" },
       });
 
       // Kirim data lewat WebSocket
       ws.send(JSON.stringify(bodyPayload));
+
+      // PENTING: Masukkan data ke riwayat manual local
+      const now = new Date();
+      const timeString = now.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const newHistoryItem = {
+        name: user.name,
+        company: user.company || "-",
+        category: user.category,
+        time: timeString,
+        // Jika manual entry tidak ada status plusOneOf di skema user, biarkan kosong atau sesuaikan
+        plusOneOf:
+          user.parent_name && user.parent_name.trim() !== ""
+            ? user.parent_name
+            : null,
+      };
+
+      // Tambah ke urutan paling atas di manualHistory
+      setManualHistory((prev) => [newHistoryItem, ...prev]);
     } else {
-      // Alert jika koneksi WS mati
       Swal.fire({
         icon: "error",
         title: "Error",
         text: "Koneksi WebSocket terputus!",
         background: "#09090b",
         color: "#ffffff",
-        confirmButtonColor: "#a3e635", // Warna lime-400 sesuai tema
+        confirmButtonColor: "#a3e635",
       });
     }
   };
@@ -537,6 +554,7 @@ export default function SummaryDashboard() {
         await scanner.stop();
         await scanner.clear();
         scanner = null;
+        setParticipant(null);
       }
     } catch (err) {
       console.error(err);
@@ -666,7 +684,11 @@ export default function SummaryDashboard() {
     );
     if (confirmClear) {
       setScanHistory([]);
+      setParticipant(null);
     }
+  };
+  const clearManualHistory = () => {
+    setManualHistory([]);
   };
   const verticalSummaryMemo = createMemo(() => {
     const result = {};
@@ -1316,27 +1338,90 @@ export default function SummaryDashboard() {
       </Show>
       {/* MANUAL TAB */}
       <Show when={activeTab() === "manual"}>
-        <div class="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-6">
-          {/* Sisi Kiri: Form Input / Panduan Manual Entry */}
-          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 h-fit">
-            <h3 class="text-white font-semibold text-lg mb-2">
-              Manual Attendance
-            </h3>
-            <p class="text-zinc-400 text-xs leading-relaxed mb-4">
-              Cari nama tamu menggunakan fitur pencarian di sebelah kanan,
-              kemudian klik tombol{" "}
-              <span class="text-lime-400 font-medium">Check In</span> untuk
-              mencatat kehadiran secara manual.
-            </p>
+        <div class="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-6 items-start">
+          {/* SISI KIRI: PANDUAN & MANUAL HISTORY PANEL */}
+          <div class="flex flex-col gap-6 w-full xl:sticky xl:top-4">
+            {/* Box 1: Panduan */}
+            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+              <h3 class="text-white font-semibold text-lg mb-2">
+                Manual Attendance
+              </h3>
+              <p class="text-zinc-400 text-xs leading-relaxed">
+                Cari nama tamu menggunakan fitur pencarian di sebelah kanan,
+                kemudian klik tombol{" "}
+                <span class="text-lime-400 font-medium">Check In</span> untuk
+                mencatat kehadiran secara manual.
+              </p>
+            </div>
+
+            {/* Box 2: Manual History Panel */}
+            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col max-h-[50vh] xl:max-h-[55vh]">
+              <div class="flex justify-between items-center mb-4 border-b border-zinc-800 pb-3">
+                <h4 class="text-white font-medium text-sm flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span>
+                  Manual Check-ins
+                </h4>
+
+                {/* Menggunakan clearManualHistory yang terpisah */}
+                <Show when={manualHistory().length > 0}>
+                  <button
+                    onClick={clearManualHistory}
+                    class="text-xs text-red-400 hover:text-red-300 transition-colors font-medium"
+                  >
+                    Clear
+                  </button>
+                </Show>
+              </div>
+
+              {/* List Riwayat Manual */}
+              <div class="overflow-y-auto space-y-3 pr-1 flex-1">
+                <Show
+                  when={manualHistory().length > 0}
+                  fallback={
+                    <div class="text-center text-zinc-600 my-8 text-xs italic">
+                      Belum ada riwayat check-in manual di sesi ini.
+                    </div>
+                  }
+                >
+                  <For each={manualHistory()}>
+                    {(item) => (
+                      <div class="bg-zinc-950 rounded-xl p-3 border border-zinc-800/80 hover:border-zinc-700 transition-colors flex flex-col gap-1">
+                        <div class="flex justify-between items-start gap-2">
+                          <span class="font-semibold text-white text-sm line-clamp-1">
+                            {item.name}
+                          </span>
+                          <span class="text-[10px] text-zinc-500 font-mono shrink-0 pt-0.5">
+                            {item.time}
+                          </span>
+                        </div>
+
+                        <div class="text-zinc-400 text-xs line-clamp-1">
+                          {item.company || "-"}
+                        </div>
+
+                        <div class="flex items-center justify-between mt-1 pt-1 border-t border-zinc-900">
+                          <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-zinc-900 text-lime-400 border border-zinc-800">
+                            {item.category}
+                          </span>
+                          <Show when={item.plusOneOf}>
+                            <span class="text-[10px] text-purple-400 font-medium">
+                              +1 of {item.plusOneOf}
+                            </span>
+                          </Show>
+                        </div>
+                      </div>
+                    )}
+                  </For>
+                </Show>
+              </div>
+            </div>
           </div>
 
-          {/* Sisi Kanan: Tabel Data User dengan Search & Sort */}
+          {/* SISI KANAN: TABEL DATA USER DENGAN SEARCH & SORT */}
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-            {/* HEADER TABEL: Diisi dengan Judul dan Quick Search Bar */}
+            {/* HEADER TABEL */}
             <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-4">
-              <h3 class="text-white font-medium text-sm">
-                Daftar Tamu
-              </h3>
+              <h3 class="text-white font-medium text-sm">Daftar Tamu</h3>
 
               {/* Quick Search Input */}
               <div class="relative w-full sm:w-72">
@@ -1344,7 +1429,6 @@ export default function SummaryDashboard() {
                   type="text"
                   value={searchValue()}
                   onInput={(e) => {
-                    // Otomatis set filter ke 'all' dan 'contains' saat user mengetik di sini
                     setSearchColumn("all");
                     setSearchOperator("contains");
                     setSearchValue(e.currentTarget.value);
@@ -1352,7 +1436,6 @@ export default function SummaryDashboard() {
                   placeholder="Cari nama, email, atau company..."
                   class="w-full bg-zinc-950 border border-zinc-800 text-sm text-white placeholder-zinc-600 rounded-xl pl-3 pr-8 py-1.5 focus:outline-none focus:border-zinc-700 transition-colors"
                 />
-                {/* Tombol Clear (X) jika input ada isinya */}
                 <Show when={searchValue()}>
                   <button
                     onClick={() => setSearchValue("")}
@@ -1370,7 +1453,6 @@ export default function SummaryDashboard() {
               <table class="w-full text-sm">
                 <thead class="sticky top-0 bg-zinc-800 z-10 text-zinc-300">
                   <tr>
-                    {/* Header Nama + Sort */}
                     <th class="p-3 text-left">
                       <button
                         class="flex items-center gap-2 font-medium hover:text-white transition-colors"
@@ -1379,7 +1461,6 @@ export default function SummaryDashboard() {
                         Nama <ArrowUpDown size={14} />
                       </button>
                     </th>
-                    {/* Header Email + Sort */}
                     <th class="p-3 text-left">
                       <button
                         class="flex items-center gap-2 font-medium hover:text-white transition-colors"
@@ -1388,7 +1469,6 @@ export default function SummaryDashboard() {
                         Email <ArrowUpDown size={14} />
                       </button>
                     </th>
-                    {/* Header Kategori + Sort */}
                     <th class="p-3 text-left">
                       <button
                         class="flex items-center gap-2 font-medium hover:text-white transition-colors"
@@ -1422,7 +1502,8 @@ export default function SummaryDashboard() {
                               disabled={isAttended}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleAttend(user.uniqueId, user.name);
+                                // DIUBAH: Sekarang mengirimkan full object user
+                                handleAttend(user);
                               }}
                               class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed"
                               classList={{
@@ -1440,7 +1521,6 @@ export default function SummaryDashboard() {
                     }}
                   </For>
 
-                  {/* Fallback kalau hasil pencarian kosong */}
                   <Show when={filteredUsers().length === 0}>
                     <tr>
                       <td
@@ -1470,7 +1550,7 @@ export default function SummaryDashboard() {
                 Close
               </button>
             </div>
-            <div class="w-full aspect-[4/3] max-w-[450px] mx-auto rounded-2xl overflow-hidden relative">
+            <div class="w-full aspect-square md:aspect-[4/3] max-w-[450px] mx-auto rounded-2xl overflow-hidden relative bg-zinc-950">
               <div id="reader" class="w-full h-full mx-auto" />
               <Show when={!scannerStarted()}>
                 <div class="absolute inset-0 bg-zinc-950 border border-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500 z-10">
