@@ -24,8 +24,8 @@ export default function DummyQrGenerator() {
   const [selectedCategory, setSelectedCategory] = createSignal("");
   const [users, setUsers] = createSignal([]);
   const [dummySummary, setDummySummary] = createSignal({});
-
-  // Signal untuk Fitur Specific User
+  const [isSpecialMode, setIsSpecialMode] = createSignal(false);
+  const [specialIndex, setSpecialIndex] = createSignal(-1); // Melacak index kategori aktif
   const [specificId, setSpecificId] = createSignal("");
   const [specificName, setSpecificName] = createSignal("");
   const [specificCat, setSpecificCat] = createSignal("VIP");
@@ -61,6 +61,87 @@ export default function DummyQrGenerator() {
       ) {
         setUsers(response.data);
 
+        // JIKA SEDANG DALAM MODE SPESIAL 10 PER KATEGORI
+        if (isSpecialMode()) {
+          console.log(
+            `[Special Mode] Berhasil menerima data untuk: ${selectedCategory()} (Index: ${specialIndex()})`,
+          );
+
+          const modifiedData = response.data.map((user) => ({
+            ...user,
+            name: `${user.name} (Special Batch)`,
+          }));
+
+          Swal.update({
+            title: `Preparing Special ZIP [${selectedCategory()}]...`,
+            html: `Packing 10 distinct QRs...`,
+          });
+
+          try {
+            await createCompactPdf(
+              modifiedData,
+              `${selectedCategory()}_SPECIAL_10_${Date.now()}`,
+            );
+
+            // Hitung indeks kategori berikutnya
+            const nextIdx = specialIndex() + 1;
+
+            if (nextIdx < categories.length) {
+              const nextCategory = categories[nextIdx];
+              console.log(
+                `[Special Mode] Bergerak ke kategori berikutnya: ${nextCategory} (Index: ${nextIdx})`,
+              );
+
+              // Update state sebelum menembak WS berikutnya
+              setSpecialIndex(nextIdx);
+              setSelectedCategory(nextCategory);
+
+              // Jeda 1 detik agar WS dan UI proses canvas tidak tabrakan
+              setTimeout(() => {
+                console.log(
+                  `[Special Mode] Menembak WS Request untuk: ${nextCategory}`,
+                );
+                localWs.send(
+                  JSON.stringify({
+                    action: "GENERATE_DUMMY_QR",
+                    payload: { category: nextCategory, count: 10 },
+                  }),
+                );
+              }, 1000);
+            } else {
+              // Jika semua kategori (0 sampai 7) sudah selesai dijalankan
+              console.log(
+                "[Special Mode] Selesai! Semua kategori berhasil diunduh.",
+              );
+              setIsSpecialMode(false);
+              setSpecialIndex(-1);
+              setLoading(false);
+
+              Swal.fire({
+                icon: "success",
+                title: "All Special Batches Downloaded!",
+                text: "10 distinct QRs for all categories downloaded successfully.",
+                background: "#111827",
+                color: "#fff",
+              });
+
+              localWs.send(JSON.stringify({ action: "GET_DASHBOARD_SUMMARY" }));
+            }
+          } catch (err) {
+            console.error("[Special Mode] Error sewaktu generate ZIP:", err);
+            setIsSpecialMode(false);
+            setSpecialIndex(-1);
+            setLoading(false);
+            Swal.fire({
+              icon: "error",
+              title: "Special Generation Failed",
+              text: err.message,
+              background: "#111827",
+              color: "#fff",
+            });
+          }
+          return;
+        }
         // Ubah Alert Loading ke ZIP
         Swal.update({
           title: "Preparing ZIP...",
@@ -476,6 +557,46 @@ export default function DummyQrGenerator() {
       }),
     );
   };
+  const generateTenDistinctPerCategory = () => {
+  if (!localWs || localWs.readyState !== WebSocket.OPEN) {
+    Swal.fire({
+      icon: "error",
+      title: "WebSocket Not Connected",
+      background: "#111827",
+      color: "#fff",
+    });
+    return;
+  }
+
+  Swal.fire({
+    title: "Starting Special Sequence",
+    text: "Generating exactly 10 distinct QRs for each category sequentially...",
+    allowOutsideClick: false,
+    showConfirmButton: false,
+    background: "#111827",
+    color: "#fff",
+    didOpen: () => {
+      Swal.showLoading();
+    },
+  });
+
+  setIsSpecialMode(true);
+  setLoading(true);
+  
+  // Mulai sekuensial dari index 0 (COMMUNITY)
+  const firstCategory = categories[0];
+  setSpecialIndex(0);
+  setSelectedCategory(firstCategory);
+
+  console.log(`[Special Mode] Memulai urutan pertama: ${firstCategory} (Index: 0)`);
+  
+  localWs.send(
+    JSON.stringify({
+      action: "GENERATE_DUMMY_QR",
+      payload: { category: firstCategory, count: 10 },
+    })
+  );
+};
 
   const categories = [
     "COMMUNITY",
@@ -563,6 +684,17 @@ export default function DummyQrGenerator() {
             <p class="mt-3 text-zinc-400">
               Generate operational QR codes and export PDF by category.
             </p>
+            <div>
+              <button
+                onClick={generateTenDistinctPerCategory}
+                disabled={loading()}
+                class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl font-bold hover:opacity-90 transition disabled:opacity-50 text-base shadow-lg"
+              >
+                {loading() && isSpecialMode()
+                  ? "GENERATING 10 QRs PER CATEGORY..."
+                  : "🔥 GENERATE 10 DISTINCT QRs PER CATEGORY"}
+              </button>
+            </div>
           </div>
           <div class="mt-8 border border-white/10 rounded-2xl overflow-hidden">
             <table class="w-full">

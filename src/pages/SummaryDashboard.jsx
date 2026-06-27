@@ -41,6 +41,9 @@ export default function SummaryDashboard() {
   const [sortDirection, setSortDirection] = createSignal("asc");
   const [showHistory, setShowHistory] = createSignal(false);
   const [lastSentName, setLastSentName] = createSignal("");
+  const [searchColumn, setSearchColumn] = createSignal("all"); // Pilihan kolom
+  const [searchOperator, setSearchOperator] = createSignal("contains"); // Pilihan operator
+  const [searchValue, setSearchValue] = createSignal(""); // Teks yang diketik
   const [scanHistory, setScanHistory] = createSignal(
     JSON.parse(localStorage.getItem("scanHistory") || "[]"),
   );
@@ -113,7 +116,6 @@ export default function SummaryDashboard() {
 
         return;
       }
-      // Potongan kode di dalam ws.onmessage
       if (
         message.status === 200 &&
         message.message === "Invitations sent successfully"
@@ -121,11 +123,7 @@ export default function SummaryDashboard() {
         Swal.fire({
           icon: "success",
           title: "Invitations Sent",
-          html: `
-      <div class="text-zinc-300">
-        Invitations sent successfully to <span class="font-semibold text-white">${lastSentName()}</span>
-      </div>
-    `,
+          html: `<div class="text-zinc-300"> Invitations sent successfully to <span class="font-semibold text-white">${lastSentName()}</span></div>`,
           background: "#09090b",
           color: "#ffffff",
           confirmButtonText: "OK",
@@ -219,67 +217,51 @@ export default function SummaryDashboard() {
     });
     return set;
   });
-  const filteredUsers = () => {
-    let data = users().filter((user) => {
-      const keyword = search().trim().toLowerCase();
+  const filteredUsers = createMemo(() => {
+    let records = users();
+    if (categoryFilter() !== "ALL") {
+      records = records.filter((u) => u.category === categoryFilter());
+    }
+    if (attendanceFilter() !== "ALL") {
+      records = records.filter(
+        (u) => u.status_attendance === attendanceFilter(),
+      );
+    }
+    const col = searchColumn();
+    const op = searchOperator();
+    const val = searchValue().trim().toLowerCase();
 
-      const matchSearch =
-        !keyword ||
-        user.name?.toLowerCase().includes(keyword) ||
-        user.email?.toLowerCase().includes(keyword) ||
-        user.company?.toLowerCase().includes(keyword) ||
-        user.parent_name?.toLowerCase().includes(keyword) ||
-        user.parent_email?.toLowerCase().includes(keyword);
-
-      const matchCategory =
-        categoryFilter() === "ALL" ||
-        user.category?.startsWith(categoryFilter());
-
-      const matchAttendance =
-        attendanceFilter() === "ALL" ||
-        user.status_attendance === attendanceFilter();
-
-      return matchSearch && matchCategory && matchAttendance;
-    });
-
-    if (sortBy()) {
-      const emailsWithPlusOne = parentEmailsSet();
-
-      data.sort((a, b) => {
-        let aValue, bValue;
-
-        if (sortBy() === "plus_one") {
-          const aIsPlusOne = a.parent_name && a.parent_name.trim() !== "";
-          const aBringsPlusOne =
-            a.email && emailsWithPlusOne.has(a.email.trim().toLowerCase());
-          aValue = aIsPlusOne
-            ? `+1 of ${a.parent_name}`
-            : aBringsPlusOne
-              ? "Brings +1"
-              : "-";
-
-          const bIsPlusOne = b.parent_name && b.parent_name.trim() !== "";
-          const bBringsPlusOne =
-            b.email && emailsWithPlusOne.has(b.email.trim().toLowerCase());
-          bValue = bIsPlusOne
-            ? `+1 of ${b.parent_name}`
-            : bBringsPlusOne
-              ? "Brings +1"
-              : "-";
-        } else {
-          aValue = a[sortBy()] ?? "";
-          bValue = b[sortBy()] ?? "";
-        }
-
-        if (sortDirection() === "asc") {
-          return String(aValue).localeCompare(String(bValue));
-        }
-        return String(bValue).localeCompare(String(aValue));
-      });
+    if (!["is_empty", "is_not_empty"].includes(op) && !val) {
+      return records;
     }
 
-    return data;
-  };
+    return records.filter((user) => {
+      let targetValue = "";
+      if (col === "all") {
+        targetValue =
+          `${user.name} ${user.email} ${user.company} ${user.vertical}`.toLowerCase();
+      } else {
+        targetValue = String(user[col] || "").toLowerCase();
+      }
+
+      switch (op) {
+        case "contains":
+          return targetValue.includes(val);
+        case "equals":
+          return targetValue === val;
+        case "starts_with":
+          return targetValue.startsWith(val);
+        case "ends_with":
+          return targetValue.endsWith(val);
+        case "is_empty":
+          return targetValue === "";
+        case "is_not_empty":
+          return targetValue !== "";
+        default:
+          return true;
+      }
+    });
+  });
   const handleSort = (field) => {
     if (sortBy() === field) {
       setSortDirection(sortDirection() === "asc" ? "desc" : "asc");
@@ -340,87 +322,101 @@ export default function SummaryDashboard() {
     document.body.removeChild(link);
   };
   const downloadCSV = () => {
-  // 1. Ambil data terfilter & info filter yang aktif saat ini
-  const currentData = filteredUsers();
-  const totalData = currentData.length;
-  
-  const currentSearch = search() ? search().trim() : "None";
-  const currentCategory = categoryFilter() || "ALL";
-  const currentAttendance = attendanceFilter() || "ALL";
+    const currentData = filteredUsers();
+    const totalData = currentData.length;
 
-  // 2. Tentukan header kolom utama tabel
-  const tableHeaders = [
-    "Name", 
-    "Category", 
-    "Company", 
-    "Email", 
-    "Plus One Status", 
-    "Confirmation", 
-    "Attendance", 
-    "Vertical",
-    "QR Link"
-  ];
+    // Ambil state filter yang baru
+    const currentColumn =
+      searchColumn() === "all" ? "All Columns" : searchColumn();
+    const currentOperator = searchOperator();
+    const currentSearchVal =
+      searchValue().trim() ||
+      (["is_empty", "is_not_empty"].includes(currentOperator) ? "-" : "None");
 
-  // 3. Map data user ke bentuk baris array
-  const rows = currentData.map((user) => {
-    const isPlusOne = user.parent_name && user.parent_name.trim() !== "";
-    const bringsPlusOne = user.email && parentEmailsSet().has(user.email.trim().toLowerCase());
-    let plusOneStatus = "-";
-    if (isPlusOne) plusOneStatus = `+1 of ${user.parent_name}`;
-    else if (bringsPlusOne) plusOneStatus = "Brings +1";
+    const currentCategory = categoryFilter() || "ALL";
+    const currentAttendance = attendanceFilter() || "ALL";
 
-    const baseurl = "https://rsvp.xpengvisionnight.co.id/rsvp";
-
-    return [
-      user.name || "-",
-      user.category || "-",
-      user.company || "-",
-      user.email || "-",
-      plusOneStatus,
-      user.status_confirmation || "-",
-      user.status_attendance || "-",
-      user.vertical || "-",
-      `${baseurl}/${user.uniqueId}`
+    const tableHeaders = [
+      "Name",
+      "Category",
+      "Company",
+      "Email",
+      "Plus One Status",
+      "Confirmation",
+      "Attendance",
+      "Vertical",
+      "QR Link",
     ];
-  });
 
-  // 4. Susun struktur CSV sesuai request (Ada "FILTERED BY:" di paling atas)
-  const csvMatrix = [
-    ["FILTERED BY:"],                             // Baris 1: Judul Filter
-    ["Search Keyword", currentSearch],            // Baris 2: Detail Search
-    ["Category Filter", currentCategory],         // Baris 3: Detail Kategori
-    ["Attendance Filter", currentAttendance],     // Baris 4: Detail Absensi
-    ["Total Data", totalData],                 // Baris 5: Total Baris Hasil Filter
-    [],                                           // Baris 6: Baris kosong biar rapi
-    tableHeaders,                                 // Baris 7: Header Kolom Utama
-    ...rows                                       // Baris 8 dst: Data Tamu
-  ];
+    const rows = currentData.map((user) => {
+      const isPlusOne = user.parent_name && user.parent_name.trim() !== "";
+      const bringsPlusOne =
+        user.email && parentEmailsSet().has(user.email.trim().toLowerCase());
+      let plusOneStatus = "-";
+      if (isPlusOne) plusOneStatus = `+1 of ${user.parent_name}`;
+      else if (bringsPlusOne) plusOneStatus = "Brings +1";
 
-  // 5. Ubah array matrix menjadi string CSV
-  const csvContent = csvMatrix
-    .map((row) =>
-      row
-        .map((value) => {
-          const stringValue = String(value ?? "");
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        })
-        .join(",")
-    )
-    .join("\n");
+      const baseurl = "https://rsvp.xpengvisionnight.co.id/rsvp";
 
-  // 6. Proses download file dengan nama file tetap/clean
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  
-  link.setAttribute("href", url);
-  link.setAttribute("download", "guest_list_export.csv"); // <-- Nama file statis, gak ada lagi angka total data
-  link.style.visibility = "hidden";
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+      return [
+        user.name || "-",
+        user.category || "-",
+        user.company || "-",
+        user.email || "-",
+        plusOneStatus,
+        user.status_confirmation || "-",
+        user.status_attendance || "-",
+        user.vertical || "-",
+        `${baseurl}/${user.uniqueId}`,
+      ];
+    });
+
+    // Susun baris metadata sesuai dengan sistem filter pilihan yang baru
+    const csvMatrix = [
+      ["FILTERED BY:"],
+      ["Search Column", currentColumn], // Info kolom yang dipilih
+      ["Search Operator", currentOperator], // Info operator (contains, equals, dll)
+      ["Search Value", currentSearchVal], // Kata kunci yang diketik
+      ["Category Filter", currentCategory],
+      ["Attendance Filter", currentAttendance],
+      ["Total Data", totalData],
+      [], // Baris kosong biar rapi
+      tableHeaders,
+      ...rows,
+    ];
+
+    const csvContent = csvMatrix
+      .map((row) =>
+        row
+          .map((value) => {
+            const stringValue = String(value ?? "");
+            return `"${stringValue.replace(/"/g, '""')}"`;
+          })
+          .join(","),
+      )
+      .join("\n");
+
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0"); // Ditambah 1 karena bulan mulai dari 0
+    const day = String(today.getDate()).padStart(2, "0");
+
+    const formattedDate = `${year}-${month}-${day}`; // Hasilnya: 2026-06-27
+
+    // 2. Proses download file dengan penamaan tanggal
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+
+    // Menggunakan template literal untuk memasukkan tanggal ke nama file
+    link.setAttribute("download", `guest_list_${formattedDate}.csv`);
+
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   const handleSendEmail = (uniqueId, name) => {
     const bodyPayload = {
       action: "DIRECT_INVITE_USERS",
@@ -575,13 +571,18 @@ export default function SummaryDashboard() {
     () => categoryColor[participant()?.category] || categoryColor.VIP,
   );
   const isMerchandiseEligible = () => {
+    const category = participant()?.category;
+    if (category === "MEDIA") {
+      return true;
+    }
     const verticalEligible = merchandiseEligibleVerticals.includes(
       participant()?.vertical || "",
     );
     const company = (participant()?.company || "").toLowerCase();
     const vipBlocked =
-      participant()?.category === "VIP" &&
+      category === "VIP" &&
       nonEligibleVipCompanies.some((c) => company.includes(c.toLowerCase()));
+
     return verticalEligible && !vipBlocked;
   };
   const displaySummary = createMemo(() => {
@@ -955,36 +956,79 @@ export default function SummaryDashboard() {
       <Show when={activeTab() === "details"}>
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
           <div class="p-4 flex flex-wrap gap-4 items-center justify-between">
-            <div class="flex flex-wrap gap-4 items-center">
-              <input
-                value={search()}
-                onInput={(e) => setSearch(e.currentTarget.value)}
-                placeholder="Search name, email, company..."
-                class="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 w-96 text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600"
-              />
-              <select
-                value={categoryFilter()}
-                onChange={(e) => setCategoryFilter(e.currentTarget.value)}
-                class="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3"
-              >
-                <option>ALL</option>
-                <option>VIP</option>
-                <option>VVIP</option>
-                <option>SUPER VVIP</option>
-                <option>DEALER</option>
-                <option>COMMUNITY</option>
-                <option>MEDIA</option>
-                <option>FRONT</option>
-              </select>
-              <select
-                value={attendanceFilter()}
-                onChange={(e) => setAttendanceFilter(e.currentTarget.value)}
-                class="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3"
-              >
-                <option value="ALL">All Attendance</option>
-                <option value="attended">Attended</option>
-                <option value="pending">Not Attended</option>
-              </select>
+            <div class="flex flex-wrap gap-3 items-center">
+              <div class="flex items-center bg-zinc-950 p-1 rounded-xl border border-zinc-800 focus-within:border-zinc-700 transition-colors gap-1">
+                <select
+                  value={searchColumn()}
+                  onChange={(e) => setSearchColumn(e.currentTarget.value)}
+                  class="bg-zinc-900 border-none text-zinc-300 text-sm rounded-lg pl-3 pr-2 py-1.5 focus:outline-none focus:bg-zinc-800 cursor-pointer font-medium"
+                >
+                  <option value="all">All Columns</option>
+                  <option value="name">Nama</option>
+                  <option value="email">Email</option>
+                  <option value="company">Company</option>
+                  <option value="vertical">Vertical</option>
+                </select>
+
+                <span class="text-zinc-800 text-xs">/</span>
+
+                <select
+                  value={searchOperator()}
+                  onChange={(e) => setSearchOperator(e.currentTarget.value)}
+                  class="bg-zinc-900 border-none text-zinc-400 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:bg-zinc-800 cursor-pointer font-normal italic"
+                >
+                  <option value="contains">contains</option>
+                  <option value="equals">equals</option>
+                  <option value="starts_with">starts with</option>
+                  <option value="ends_with">ends with</option>
+                  <option value="is_empty">is empty</option>
+                  <option value="is_not_empty">is not empty</option>
+                </select>
+
+                <Show
+                  when={
+                    searchOperator() !== "is_empty" &&
+                    searchOperator() !== "is_not_empty"
+                  }
+                >
+                  <span class="text-zinc-800 text-xs pr-1">/</span>
+                  <input
+                    value={searchValue()}
+                    onInput={(e) => setSearchValue(e.currentTarget.value)}
+                    placeholder="Filter value..."
+                    class="bg-transparent border-none text-sm text-white placeholder-zinc-600 focus:outline-none w-3/4 px-2 py-1.5"
+                  />
+                </Show>
+              </div>
+
+              <div class="hidden md:block h-6 w-px bg-zinc-800 mx-1"></div>
+
+              <div class="flex items-center gap-2">
+                <select
+                  value={categoryFilter()}
+                  onChange={(e) => setCategoryFilter(e.currentTarget.value)}
+                  class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-zinc-600 cursor-pointer transition-colors"
+                >
+                  <option value="ALL">All Categories</option>{" "}
+                  <option>VIP</option>
+                  <option>VVIP</option>
+                  <option>SUPER VVIP</option>
+                  <option>DEALER</option>
+                  <option>COMMUNITY</option>
+                  <option>MEDIA</option>
+                  <option>FRONT</option>
+                </select>
+
+                <select
+                  value={attendanceFilter()}
+                  onChange={(e) => setAttendanceFilter(e.currentTarget.value)}
+                  class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-zinc-600 cursor-pointer transition-colors"
+                >
+                  <option value="ALL">All Attendance</option>
+                  <option value="attended">Attended</option>
+                  <option value="pending">Not Attended</option>
+                </select>
+              </div>
             </div>
             <button
               onClick={downloadCSV}
@@ -1093,13 +1137,14 @@ export default function SummaryDashboard() {
                             {isPlusOne && (
                               <button
                                 type="button"
+                                // Contoh untuk tombol "+1 of"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const inviterKey =
-                                    user.parent_email?.trim() ||
-                                    user.parent_name?.trim() ||
-                                    "";
-                                  setSearch(inviterKey);
+                                  setSearchColumn("name"); // Set kolom pencarian langsung ke Nama
+                                  setSearchOperator("contains");
+                                  setSearchValue(
+                                    user.parent_name?.trim() || "",
+                                  );
                                 }}
                                 class="px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-950/60 text-purple-400 border border-purple-800/50 hover:bg-purple-900/80 transition-colors text-left cursor-pointer"
                                 title="Click to view inviter"
@@ -1308,7 +1353,8 @@ export default function SummaryDashboard() {
         </div>
 
         {/* HISTORY DRAWER */}
-        <div class={`fixed top-0 right-0 h-screen w-96 bg-zinc-950 border-l border-zinc-800 transition-all duration-300 z-50 ${showHistory() ? "translate-x-0" : "translate-x-full"}`}
+        <div
+          class={`fixed top-0 right-0 h-screen w-96 bg-zinc-950 border-l border-zinc-800 transition-all duration-300 z-50 ${showHistory() ? "translate-x-0" : "translate-x-full"}`}
         >
           <div class="p-5 flex justify-between items-center border-b border-zinc-800">
             <h2 class="text-xl font-bold">Scan History</h2>
