@@ -1335,7 +1335,7 @@ export default function SummaryDashboard() {
             {/* HEADER TABEL: Diisi dengan Judul dan Quick Search Bar */}
             <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-4">
               <h3 class="text-white font-medium text-sm">
-                Daftar Tamu Ringkas
+                Daftar Tamu
               </h3>
 
               {/* Quick Search Input */}
