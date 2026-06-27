@@ -462,6 +462,52 @@ export default function SummaryDashboard() {
       });
     }
   };
+  const handleAttend = (uniqueId, name) => {
+    const bodyPayload = {
+      action: "ATTEND",
+      payload: {
+        attendUniqueId: uniqueId,
+      },
+    };
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      // Opsional: Simpan nama ke state jika kamu butuh validasi di ws.onmessage nanti
+      // setLastAttendedName(name);
+
+      // Tampilkan Loading "Checking in..." dengan style zinc/dark
+      Swal.fire({
+        title: "Processing Attendance",
+        html: `
+      <div class="text-zinc-300">
+        Checking in <span class="font-semibold text-white">${name}</span>...
+      </div>
+    `,
+        background: "#09090b",
+        color: "#ffffff",
+        allowOutsideClick: false, // Biar ga sengaja ketutup pas nge-klik luar
+        allowEscapeKey: false, // Biar ga bisa ditutup pakai tombol Esc
+        didOpen: () => {
+          Swal.showLoading(); // Memunculkan spinner loading bawaan Swal
+        },
+        customClass: {
+          popup: "border border-zinc-800 rounded-2xl shadow-2xl",
+        },
+      });
+
+      // Kirim data lewat WebSocket
+      ws.send(JSON.stringify(bodyPayload));
+    } else {
+      // Alert jika koneksi WS mati
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Koneksi WebSocket terputus!",
+        background: "#09090b",
+        color: "#ffffff",
+        confirmButtonColor: "#a3e635", // Warna lime-400 sesuai tema
+      });
+    }
+  };
   const startScanner = async () => {
     if (scannerStarted()) return;
     try {
@@ -603,9 +649,9 @@ export default function SummaryDashboard() {
     LEASING: 210,
     MEDIA: 120,
     FRONT: 412,
-    SVVIP: 8,
-    VVIP: 60,
-    "SALES LIVE STREAM": 48,
+    // SVVIP: 8,
+    // VVIP: 60,
+    // "SALES LIVE STREAM": 48,
   };
   const tableCategories = createMemo(() => {
     const categories = new Set([
@@ -674,6 +720,12 @@ export default function SummaryDashboard() {
             class={`px-5 py-3 rounded-xl ${activeTab() === "scanner" ? "bg-lime-400 text-black" : "bg-zinc-900"}`}
           >
             Scanner
+          </button>
+          <button
+            onClick={() => setActiveTab("manual")}
+            class={`px-5 py-3 rounded-xl ${activeTab() === "manual" ? "bg-lime-400 text-black" : "bg-zinc-900"}`}
+          >
+            Manual
           </button>
         </div>
 
@@ -1259,6 +1311,149 @@ export default function SummaryDashboard() {
                 </For>
               </tbody>
             </table>
+          </div>
+        </div>
+      </Show>
+      {/* MANUAL TAB */}
+      <Show when={activeTab() === "manual"}>
+        <div class="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-6">
+          {/* Sisi Kiri: Form Input / Panduan Manual Entry */}
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 h-fit">
+            <h3 class="text-white font-semibold text-lg mb-2">
+              Manual Attendance
+            </h3>
+            <p class="text-zinc-400 text-xs leading-relaxed mb-4">
+              Cari nama tamu menggunakan fitur pencarian di sebelah kanan,
+              kemudian klik tombol{" "}
+              <span class="text-lime-400 font-medium">Check In</span> untuk
+              mencatat kehadiran secara manual.
+            </p>
+          </div>
+
+          {/* Sisi Kanan: Tabel Data User dengan Search & Sort */}
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+            {/* HEADER TABEL: Diisi dengan Judul dan Quick Search Bar */}
+            <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-4">
+              <h3 class="text-white font-medium text-sm">
+                Daftar Tamu Ringkas
+              </h3>
+
+              {/* Quick Search Input */}
+              <div class="relative w-full sm:w-72">
+                <input
+                  type="text"
+                  value={searchValue()}
+                  onInput={(e) => {
+                    // Otomatis set filter ke 'all' dan 'contains' saat user mengetik di sini
+                    setSearchColumn("all");
+                    setSearchOperator("contains");
+                    setSearchValue(e.currentTarget.value);
+                  }}
+                  placeholder="Cari nama, email, atau company..."
+                  class="w-full bg-zinc-950 border border-zinc-800 text-sm text-white placeholder-zinc-600 rounded-xl pl-3 pr-8 py-1.5 focus:outline-none focus:border-zinc-700 transition-colors"
+                />
+                {/* Tombol Clear (X) jika input ada isinya */}
+                <Show when={searchValue()}>
+                  <button
+                    onClick={() => setSearchValue("")}
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-xs"
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                </Show>
+              </div>
+            </div>
+
+            {/* CONTAINER TABEL */}
+            <div class="overflow-auto max-h-[75vh]">
+              <table class="w-full text-sm">
+                <thead class="sticky top-0 bg-zinc-800 z-10 text-zinc-300">
+                  <tr>
+                    {/* Header Nama + Sort */}
+                    <th class="p-3 text-left">
+                      <button
+                        class="flex items-center gap-2 font-medium hover:text-white transition-colors"
+                        onClick={() => handleSort("name")}
+                      >
+                        Nama <ArrowUpDown size={14} />
+                      </button>
+                    </th>
+                    {/* Header Email + Sort */}
+                    <th class="p-3 text-left">
+                      <button
+                        class="flex items-center gap-2 font-medium hover:text-white transition-colors"
+                        onClick={() => handleSort("email")}
+                      >
+                        Email <ArrowUpDown size={14} />
+                      </button>
+                    </th>
+                    {/* Header Kategori + Sort */}
+                    <th class="p-3 text-left">
+                      <button
+                        class="flex items-center gap-2 font-medium hover:text-white transition-colors"
+                        onClick={() => handleSort("category")}
+                      >
+                        Kategori <ArrowUpDown size={14} />
+                      </button>
+                    </th>
+                    <th class="p-3 text-center font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <For each={filteredUsers()}>
+                    {(user) => {
+                      const isAttended = user.status_attendance === "attended";
+
+                      return (
+                        <tr class="border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors">
+                          <td class="p-3 font-medium text-white">
+                            {user.name}
+                          </td>
+                          <td class="p-3 text-zinc-400">{user.email || "-"}</td>
+                          <td class="p-3">
+                            <span class="px-2 py-0.5 text-xs font-medium rounded-md bg-zinc-950 text-zinc-300 border border-zinc-800">
+                              {user.category}
+                            </span>
+                          </td>
+                          <td class="p-3 text-center">
+                            <button
+                              type="button"
+                              disabled={isAttended}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAttend(user.uniqueId, user.name);
+                              }}
+                              class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed"
+                              classList={{
+                                "bg-lime-600 hover:bg-lime-500 text-white":
+                                  !isAttended,
+                                "bg-zinc-800 text-zinc-500 border border-zinc-700 opacity-60":
+                                  isAttended,
+                              }}
+                            >
+                              {isAttended ? "Attended" : "Check In"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    }}
+                  </For>
+
+                  {/* Fallback kalau hasil pencarian kosong */}
+                  <Show when={filteredUsers().length === 0}>
+                    <tr>
+                      <td
+                        colspan="4"
+                        class="p-8 text-center text-zinc-600 italic"
+                      >
+                        Data tidak ditemukan...
+                      </td>
+                    </tr>
+                  </Show>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </Show>
