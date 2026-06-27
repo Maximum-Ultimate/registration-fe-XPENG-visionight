@@ -41,9 +41,9 @@ export default function SummaryDashboard() {
   const [sortDirection, setSortDirection] = createSignal("asc");
   const [showHistory, setShowHistory] = createSignal(false);
   const [lastSentName, setLastSentName] = createSignal("");
-  const [searchColumn, setSearchColumn] = createSignal("all"); // Pilihan kolom
-  const [searchOperator, setSearchOperator] = createSignal("contains"); // Pilihan operator
-  const [searchValue, setSearchValue] = createSignal(""); // Teks yang diketik
+  const [searchColumn, setSearchColumn] = createSignal("all");
+  const [searchOperator, setSearchOperator] = createSignal("contains");
+  const [searchValue, setSearchValue] = createSignal("");
   const [scanHistory, setScanHistory] = createSignal(
     JSON.parse(localStorage.getItem("scanHistory") || "[]"),
   );
@@ -54,513 +54,6 @@ export default function SummaryDashboard() {
   let ws;
   let scanner;
 
-  onMount(() => {
-    ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");
-
-    ws.onopen = () => {
-      ws.send(
-        JSON.stringify({
-          action: "GET_DASHBOARD_SUMMARY",
-        }),
-      );
-      ws.send(
-        JSON.stringify({
-          action: "GET_USERS_DASHBOARD",
-        }),
-      );
-    };
-
-    ws.onmessage = async (event) => {
-      const message = JSON.parse(event.data);
-      if (message.status === "error") {
-        await stopScanner();
-
-        let errorText = message.message;
-        let title = "Sudah Check-In";
-
-        if (errorText === "User does not exist") {
-          title = "QR Tidak Terdaftar";
-          errorText = "Silahkan hubungi Helpdesk";
-        } else if (errorText.includes("already attended at")) {
-          const [name, dateText] = errorText.split(" already attended at ");
-          const date = new Date(dateText);
-
-          errorText =
-            `${name}\n\n` +
-            `Sudah melakukan attendance sebelumnya.\n` +
-            `Waktu scan: ${date.toLocaleString("id-ID")}`;
-        }
-
-        Swal.fire({
-          icon: "warning",
-          title,
-          html: `
-            <div class="text-zinc-300 whitespace-pre-line">
-              ${errorText}
-            </div>
-          `,
-          background: "#09090b",
-          color: "#fff",
-          confirmButtonText: "OK",
-          confirmButtonColor: "#a3e635",
-          allowOutsideClick: false,
-          allowEscapeKey: false,
-          customClass: {
-            popup:
-              "border border-lime-400 rounded-2xl shadow-[0_0_30px_rgba(163,230,53,0.35)]",
-            title: "text-lime-400",
-            confirmButton: "font-bold rounded-xl px-8",
-          },
-        }).then(() => {
-          startScanner();
-        });
-
-        return;
-      }
-      if (
-        message.status === 200 &&
-        message.message === "Invitations sent successfully"
-      ) {
-        Swal.fire({
-          icon: "success",
-          title: "Invitations Sent",
-          html: `<div class="text-zinc-300"> Invitations sent successfully to <span class="font-semibold text-white">${lastSentName()}</span></div>`,
-          background: "#09090b",
-          color: "#ffffff",
-          confirmButtonText: "OK",
-          confirmButtonColor: "#a3e635",
-          allowOutsideClick: false,
-          allowEscapeKey: false,
-          customClass: {
-            popup:
-              "border border-lime-400 rounded-2xl shadow-[0_0_30px_rgba(163,230,53,0.35)]",
-            title: "text-lime-400",
-            confirmButton: "!text-black font-bold rounded-xl px-8 py-3",
-          },
-        });
-        return;
-      }
-      switch (message.type) {
-        case "DASHBOARD_SUMMARY":
-          setSummary(message.data);
-          break;
-
-        case "updateUsersDashboard":
-          setUsers(message.data?.users || []);
-          break;
-
-        case "attend-confirm":
-          await stopScanner();
-          setParticipant(message);
-          localStorage.setItem("lastParticipant", JSON.stringify(message));
-          setScanHistory((prev) => {
-            const newHistory = [
-              {
-                ...message,
-                time: new Date().toLocaleTimeString(),
-              },
-              ...prev,
-            ];
-
-            const limitedHistory = newHistory.slice(0, 100);
-            localStorage.setItem("scanHistory", JSON.stringify(limitedHistory));
-            return limitedHistory;
-          });
-          Swal.fire({
-            icon: "success",
-            title: "Attendance Confirmed",
-            html: `
-              <div class="text-zinc-300">
-                <div class="font-semibold">
-                  ${message.name} (${message.category})
-                </div>
-                <div class="text-zinc-400 text-sm">
-                  ${message.company}
-                </div>
-                ${
-                  message.plusOneOf
-                    ? `
-                    <div class="mt-3 p-2 rounded-lg border border-yellow-400 bg-yellow-500/10 text-yellow-300">
-                      +1 Of: ${message.plusOneOf}
-                    </div>
-                  `
-                    : ""
-                }
-              </div>
-            `,
-            background: "#09090b",
-            color: "#ffffff",
-            confirmButtonText: "CONTINUE",
-            confirmButtonColor: "#a3e635",
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            customClass: {
-              popup:
-                "border border-lime-400 rounded-2xl shadow-[0_0_30px_rgba(163,230,53,0.35)]",
-              title: "text-lime-400",
-              confirmButton: "!text-black font-bold rounded-xl px-8 py-3",
-            },
-          });
-      }
-    };
-  });
-
-  onCleanup(() => {
-    ws?.close();
-  });
-
-  const parentEmailsSet = createMemo(() => {
-    const set = new Set();
-    users().forEach((u) => {
-      if (u.parent_email && u.parent_email.trim() !== "") {
-        set.add(u.parent_email.trim().toLowerCase());
-      }
-    });
-    return set;
-  });
-  const filteredUsers = createMemo(() => {
-    let records = users();
-    if (categoryFilter() !== "ALL") {
-      records = records.filter((u) => u.category === categoryFilter());
-    }
-    if (attendanceFilter() !== "ALL") {
-      records = records.filter(
-        (u) => u.status_attendance === attendanceFilter(),
-      );
-    }
-    const col = searchColumn();
-    const op = searchOperator();
-    const val = searchValue().trim().toLowerCase();
-
-    if (!["is_empty", "is_not_empty"].includes(op) && !val) {
-      return records;
-    }
-
-    return records.filter((user) => {
-      let targetValue = "";
-      if (col === "all") {
-        targetValue =
-          `${user.name} ${user.email} ${user.company} ${user.vertical}`.toLowerCase();
-      } else {
-        targetValue = String(user[col] || "").toLowerCase();
-      }
-
-      switch (op) {
-        case "contains":
-          return targetValue.includes(val);
-        case "equals":
-          return targetValue === val;
-        case "starts_with":
-          return targetValue.startsWith(val);
-        case "ends_with":
-          return targetValue.endsWith(val);
-        case "is_empty":
-          return targetValue === "";
-        case "is_not_empty":
-          return targetValue !== "";
-        default:
-          return true;
-      }
-    });
-  });
-  const handleSort = (field) => {
-    if (sortBy() === field) {
-      setSortDirection(sortDirection() === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(field);
-      setSortDirection("asc");
-    }
-  };
-  const downloadCSVFirst = () => {
-    const dataToExport = filteredUsers();
-    const emailsWithPlusOne = parentEmailsSet();
-
-    const headers = [
-      "Name",
-      "Category",
-      "Company",
-      "Email",
-      "Plus One Status",
-      "Confirmation Status",
-      "Attendance Status",
-      "Vertical",
-    ];
-
-    const rows = dataToExport.map((user) => {
-      const isPlusOne = user.parent_name && user.parent_name.trim() !== "";
-      const bringsPlusOne =
-        user.email && emailsWithPlusOne.has(user.email.trim().toLowerCase());
-      const plusOneStatus = isPlusOne
-        ? `+1 of ${user.parent_name}`
-        : bringsPlusOne
-          ? "Brings +1"
-          : "-";
-
-      return [
-        `"${(user.name || "").replace(/"/g, '""')}"`,
-        `"${(user.category || "").replace(/"/g, '""')}"`,
-        `"${(user.company || "").replace(/"/g, '""')}"`,
-        `"${(user.email || "").replace(/"/g, '""')}"`,
-        `"${plusOneStatus.replace(/"/g, '""')}"`,
-        `"${(user.status_confirmation || "").replace(/"/g, '""')}"`,
-        `"${(user.status_attendance || "").replace(/"/g, '""')}"`,
-        `"${(user.vertical || "").replace(/"/g, '""')}"`,
-      ];
-    });
-
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((e) => e.join(",")),
-    ].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const today = new Date().toISOString().slice(0, 10);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `XPENG_Attendance_Details_${today}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-  const downloadCSV = () => {
-    const currentData = filteredUsers();
-    const totalData = currentData.length;
-
-    // Ambil state filter yang baru
-    const currentColumn =
-      searchColumn() === "all" ? "All Columns" : searchColumn();
-    const currentOperator = searchOperator();
-    const currentSearchVal =
-      searchValue().trim() ||
-      (["is_empty", "is_not_empty"].includes(currentOperator) ? "-" : "None");
-
-    const currentCategory = categoryFilter() || "ALL";
-    const currentAttendance = attendanceFilter() || "ALL";
-
-    const tableHeaders = [
-      "Name",
-      "Category",
-      "Company",
-      "Email",
-      "Plus One Status",
-      "Confirmation",
-      "Attendance",
-      "Vertical",
-      "QR Link",
-    ];
-
-    const rows = currentData.map((user) => {
-      const isPlusOne = user.parent_name && user.parent_name.trim() !== "";
-      const bringsPlusOne =
-        user.email && parentEmailsSet().has(user.email.trim().toLowerCase());
-      let plusOneStatus = "-";
-      if (isPlusOne) plusOneStatus = `+1 of ${user.parent_name}`;
-      else if (bringsPlusOne) plusOneStatus = "Brings +1";
-
-      const baseurl = "https://rsvp.xpengvisionnight.co.id/rsvp";
-
-      return [
-        user.name || "-",
-        user.category || "-",
-        user.company || "-",
-        user.email || "-",
-        plusOneStatus,
-        user.status_confirmation || "-",
-        user.status_attendance || "-",
-        user.vertical || "-",
-        `${baseurl}/${user.uniqueId}`,
-      ];
-    });
-
-    // Susun baris metadata sesuai dengan sistem filter pilihan yang baru
-    const csvMatrix = [
-      ["FILTERED BY:"],
-      ["Search Column", currentColumn], // Info kolom yang dipilih
-      ["Search Operator", currentOperator], // Info operator (contains, equals, dll)
-      ["Search Value", currentSearchVal], // Kata kunci yang diketik
-      ["Category Filter", currentCategory],
-      ["Attendance Filter", currentAttendance],
-      ["Total Data", totalData],
-      [], // Baris kosong biar rapi
-      tableHeaders,
-      ...rows,
-    ];
-
-    const csvContent = csvMatrix
-      .map((row) =>
-        row
-          .map((value) => {
-            const stringValue = String(value ?? "");
-            return `"${stringValue.replace(/"/g, '""')}"`;
-          })
-          .join(","),
-      )
-      .join("\n");
-
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0"); // Ditambah 1 karena bulan mulai dari 0
-    const day = String(today.getDate()).padStart(2, "0");
-
-    const formattedDate = `${year}-${month}-${day}`; // Hasilnya: 2026-06-27
-
-    // 2. Proses download file dengan penamaan tanggal
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-
-    // Menggunakan template literal untuk memasukkan tanggal ke nama file
-    link.setAttribute("download", `guest_list_${formattedDate}.csv`);
-
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-  const handleSendEmail = (uniqueId, name) => {
-    const bodyPayload = {
-      action: "DIRECT_INVITE_USERS",
-      payload: {
-        userIdas: [uniqueId],
-      },
-    };
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      // Simpan nama untuk dipakai di ws.onmessage nanti
-      setLastSentName(name);
-
-      // Tampilkan Loading "Sending to..."
-      Swal.fire({
-        title: "Sending Invitation",
-        html: `
-        <div class="text-zinc-300">
-          Sending email to <span class="font-semibold text-white">${name}</span>...
-        </div>
-      `,
-        background: "#09090b",
-        color: "#ffffff",
-        allowOutsideClick: false, // Biar ga sengaja ketutup pas nge-klik luar
-        allowEscapeKey: false, // Biar ga bisa ditutup pakai tombol Esc
-        didOpen: () => {
-          Swal.showLoading(); // Memunculkan spinner loading bawaan Swal
-        },
-        customClass: {
-          popup: "border border-zinc-800 rounded-2xl shadow-2xl",
-        },
-      });
-
-      // Kirim data lewat WebSocket
-      ws.send(JSON.stringify(bodyPayload));
-    } else {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Koneksi WebSocket terputus!",
-        background: "#09090b",
-        color: "#ffffff",
-        confirmButtonColor: "#a3e635",
-      });
-    }
-  };
-  const handleAttend = (user) => {
-    const bodyPayload = {
-      action: "ATTEND",
-      payload: {
-        attendUniqueId: user.uniqueId,
-      },
-    };
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      // Tampilkan Loading Swal
-      Swal.fire({
-        title: "Processing Attendance",
-        html: `
-        <div class="text-zinc-300">
-          Checking in <span class="font-semibold text-white">${user.name}</span>...
-        </div>
-      `,
-        background: "#09090b",
-        color: "#ffffff",
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-        customClass: { popup: "border border-zinc-800 rounded-2xl shadow-2xl" },
-      });
-
-      // Kirim data lewat WebSocket
-      ws.send(JSON.stringify(bodyPayload));
-
-      // PENTING: Masukkan data ke riwayat manual local
-      const now = new Date();
-      const timeString = now.toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-      const newHistoryItem = {
-        name: user.name,
-        company: user.company || "-",
-        category: user.category,
-        time: timeString,
-        // Jika manual entry tidak ada status plusOneOf di skema user, biarkan kosong atau sesuaikan
-        plusOneOf:
-          user.parent_name && user.parent_name.trim() !== ""
-            ? user.parent_name
-            : null,
-      };
-
-      // Tambah ke urutan paling atas di manualHistory
-      setManualHistory((prev) => [newHistoryItem, ...prev]);
-    } else {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Koneksi WebSocket terputus!",
-        background: "#09090b",
-        color: "#ffffff",
-        confirmButtonColor: "#a3e635",
-      });
-    }
-  };
-  const startScanner = async () => {
-    if (scannerStarted()) return;
-    try {
-      scanner = new Html5Qrcode("reader");
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        async (decodedText) => {
-          await stopScanner();
-          ws.send(
-            JSON.stringify({
-              action: "ATTEND",
-              payload: { attendUniqueId: decodedText },
-            }),
-          );
-        },
-        () => {},
-      );
-      setScannerStarted(true);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-  const stopScanner = async () => {
-    try {
-      if (scanner && scannerStarted()) {
-        await scanner.stop();
-        await scanner.clear();
-        scanner = null;
-        setParticipant(null);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-    setScannerStarted(false);
-  };
   const categoryColor = {
     VVIP: { bg: "bg-yellow-400", border: "border-yellow-400", label: "GOLD" },
     VIP: { bg: "bg-gray-300", border: "border-gray-300", label: "SILVER" },
@@ -582,6 +75,7 @@ export default function SummaryDashboard() {
     },
     FRONT: { bg: "bg-violet-300", border: "border-violet-300", label: "LILAC" },
   };
+
   const merchandiseEligibleVerticals = [
     "Dealer Management 3rd Party",
     "Business Partner Aftersales",
@@ -597,6 +91,7 @@ export default function SummaryDashboard() {
     "Online Activation ( Socmed)",
     "Prospect Leasing",
   ];
+
   const nonEligibleVipCompanies = [
     "XPENG AFTERSALES EIVO",
     "EAL",
@@ -631,24 +126,454 @@ export default function SummaryDashboard() {
     "Automotive",
     "Urban Republic - Erajaya",
   ].map((c) => c.toLowerCase().trim());
-  const style = createMemo(
-    () => categoryColor[participant()?.category] || categoryColor.VIP,
-  );
-  const isMerchandiseEligible = () => {
-    const category = participant()?.category;
-    if (category === "MEDIA") {
-      return true;
-    }
+
+  // Fungsi utilitas untuk mengecek kelayakan merchandise dari objek data mana saja
+  const checkMerchEligibility = (item) => {
+    if (!item) return false;
+    const category = item.category;
+    if (category === "MEDIA") return true;
     const verticalEligible = merchandiseEligibleVerticals.includes(
-      participant()?.vertical || "",
+      item.vertical || "",
     );
-    const company = (participant()?.company || "").toLowerCase();
+    const company = (item.company || "").toLowerCase();
     const vipBlocked =
       category === "VIP" &&
       nonEligibleVipCompanies.some((c) => company.includes(c.toLowerCase()));
-
     return verticalEligible && !vipBlocked;
   };
+
+  onMount(() => {
+    ws = new WebSocket("wss://cloud.xpengvisionnight.co.id");
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ action: "GET_DASHBOARD_SUMMARY" }));
+      ws.send(JSON.stringify({ action: "GET_USERS_DASHBOARD" }));
+    };
+
+    ws.onmessage = async (event) => {
+      const message = JSON.parse(event.data);
+      if (message.status === "error") {
+        await stopScanner();
+        let errorText = message.message;
+        let title = "Sudah Check-In";
+
+        if (errorText === "User does not exist") {
+          title = "QR Tidak Terdaftar";
+          errorText = "Silahkan hubungi Helpdesk";
+        } else if (errorText.includes("already attended at")) {
+          const [name, dateText] = errorText.split(" already attended at ");
+          const date = new Date(dateText);
+          errorText = `${name}\n\nSudah melakukan attendance sebelumnya.\nWaktu scan: ${date.toLocaleString("id-ID")}`;
+        }
+
+        Swal.fire({
+          icon: "warning",
+          title,
+          html: `<div class="text-zinc-300 whitespace-pre-line">${errorText}</div>`,
+          background: "#09090b",
+          color: "#fff",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#a3e635",
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          customClass: {
+            popup:
+              "border border-lime-400 rounded-2xl shadow-[0_0_30px_rgba(163,230,53,0.35)]",
+            title: "text-lime-400",
+            confirmButton: "font-bold rounded-xl px-8",
+          },
+        }).then(() => {
+          startScanner();
+        });
+        return;
+      }
+
+      if (
+        message.status === 200 &&
+        message.message === "Invitations sent successfully"
+      ) {
+        Swal.fire({
+          icon: "success",
+          title: "Invitations Sent",
+          html: `<div class="text-zinc-300"> Invitations sent successfully to <span class="font-semibold text-white">${lastSentName()}</span></div>`,
+          background: "#09090b",
+          color: "#ffffff",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#a3e635",
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          customClass: {
+            popup:
+              "border border-lime-400 rounded-2xl shadow-[0_0_30px_rgba(163,230,53,0.35)]",
+            title: "text-lime-400",
+            confirmButton: "!text-black font-bold rounded-xl px-8 py-3",
+          },
+        });
+        return;
+      }
+
+      switch (message.type) {
+        case "DASHBOARD_SUMMARY":
+          setSummary(message.data);
+          break;
+
+        case "updateUsersDashboard":
+          setUsers(message.data?.users || []);
+          break;
+
+        case "attend-confirm":
+          await stopScanner();
+          setParticipant(message);
+          localStorage.setItem("lastParticipant", JSON.stringify(message));
+
+          setScanHistory((prev) => {
+            const newHistory = [
+              { ...message, time: new Date().toLocaleTimeString() },
+              ...prev,
+            ];
+            const limitedHistory = newHistory.slice(0, 100);
+            localStorage.setItem("scanHistory", JSON.stringify(limitedHistory));
+            return limitedHistory;
+          });
+
+          // Kalkulasi data kelayakan merch dan warna gelang langsung untuk modal popup global
+          const isMerch = checkMerchEligibility(message);
+          const wristband = categoryColor[message.category] || {
+            bg: "bg-zinc-700",
+            label: "REGULAR",
+          };
+
+          Swal.fire({
+            icon: "success",
+            title: "Attendance Confirmed",
+            html: `
+              <div class="text-zinc-300 text-left space-y-1 ml-2">
+                <div class="font-bold text-white text-base">${message.name}</div>
+                <div class="text-zinc-400 text-xs">Kategori: <span class="text-lime-400 font-semibold">${message.category}</span></div>
+                <div class="text-zinc-400 text-xs">Company / Dealer: <span class="text-white">${message.company || message.dealer || "-"}</span></div>
+                ${message.vertical ? `<div class="text-zinc-400 text-xs">Vertical: <span class="text-zinc-300">${message.vertical}</span></div>` : ""}
+                ${message.plusOneOf ? `<div class="mt-2 p-1.5 rounded bg-yellow-500/10 text-yellow-300 text-xs border border-yellow-500/20 font-medium">+1 Of: ${message.plusOneOf}</div>` : ""}
+                
+                ${
+                  isMerch
+                    ? `
+                  <div class="mt-4 p-2.5 rounded-xl border border-orange-500/30 bg-orange-500/10 text-orange-400 font-bold text-center text-xs tracking-wide">
+                    🎁 ELIGIBLE FOR MERCHANDISE
+                  </div>
+                `
+                    : `
+                  <div class="mt-4 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900/50 text-zinc-500 font-medium text-center text-xs">
+                    ❌ NOT ELIGIBLE FOR MERCHANDISE
+                  </div>
+                `
+                }
+
+                <div class="mt-2 p-2.5 rounded-xl text-center font-black text-xs text-black uppercase tracking-wider ${wristband.bg}">
+                  🎟️ ${wristband.label} Wristband
+                </div>
+              </div>
+            `,
+            background: "#09090b",
+            color: "#ffffff",
+            confirmButtonText: "CONTINUE",
+            confirmButtonColor: "#a3e635",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            customClass: {
+              popup:
+                "border border-lime-400 rounded-2xl shadow-[0_0_30px_rgba(163,230,53,0.35)]",
+              title: "text-lime-400 text-center",
+              confirmButton:
+                "!text-black font-bold rounded-xl px-8 py-3 w-full sm:w-auto",
+            },
+          });
+          break;
+      }
+    };
+  });
+
+  onCleanup(() => {
+    ws?.close();
+  });
+
+  const parentEmailsSet = createMemo(() => {
+    const set = new Set();
+    users().forEach((u) => {
+      if (u.parent_email && u.parent_email.trim() !== "") {
+        set.add(u.parent_email.trim().toLowerCase());
+      }
+    });
+    return set;
+  });
+
+  const filteredUsers = createMemo(() => {
+    let records = users();
+    if (categoryFilter() !== "ALL") {
+      records = records.filter((u) => u.category === categoryFilter());
+    }
+    if (attendanceFilter() !== "ALL") {
+      records = records.filter(
+        (u) => u.status_attendance === attendanceFilter(),
+      );
+    }
+    const col = searchColumn();
+    const op = searchOperator();
+    const val = searchValue().trim().toLowerCase();
+
+    if (!["is_empty", "is_not_empty"].includes(op) && !val) {
+      return records;
+    }
+
+    let result = records.filter((user) => {
+      let targetValue = "";
+      if (col === "all") {
+        targetValue =
+          `${user.name} ${user.email} ${user.company} ${user.vertical}`.toLowerCase();
+      } else {
+        targetValue = String(user[col] || "").toLowerCase();
+      }
+
+      switch (op) {
+        case "contains":
+          return targetValue.includes(val);
+        case "equals":
+          return targetValue === val;
+        case "starts_with":
+          return targetValue.startsWith(val);
+        case "ends_with":
+          return targetValue.endsWith(val);
+        case "is_empty":
+          return targetValue === "";
+        case "is_not_empty":
+          return targetValue !== "";
+        default:
+          return true;
+      }
+    });
+
+    const field = sortBy();
+    if (field) {
+      const dir = sortDirection() === "asc" ? 1 : -1;
+      return [...result].sort((a, b) => {
+        let valA = field === "plus_one" ? a.parent_name || "" : a[field] || "";
+        let valB = field === "plus_one" ? b.parent_name || "" : b[field] || "";
+        if (typeof valA === "string" && typeof valB === "string") {
+          return valA.localeCompare(valB) * dir;
+        }
+        return (valA < valB ? -1 : valA > valB ? 1 : 0) * dir;
+      });
+    }
+    return result;
+  });
+
+  const handleSort = (field) => {
+    if (sortBy() === field) {
+      setSortDirection(sortDirection() === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const downloadCSV = () => {
+    const currentData = filteredUsers();
+    const totalData = currentData.length;
+    const currentColumn =
+      searchColumn() === "all" ? "All Columns" : searchColumn();
+    const currentOperator = searchOperator();
+    const currentSearchVal =
+      searchValue().trim() ||
+      (["is_empty", "is_not_empty"].includes(currentOperator) ? "-" : "None");
+    const currentCategory = categoryFilter() || "ALL";
+    const currentAttendance = attendanceFilter() || "ALL";
+
+    const tableHeaders = [
+      "Name",
+      "Category",
+      "Company",
+      "Email",
+      "Plus One Status",
+      "Confirmation",
+      "Attendance",
+      "Vertical",
+      "QR Link",
+    ];
+    const rows = currentData.map((user) => {
+      const isPlusOne = user.parent_name && user.parent_name.trim() !== "";
+      const bringsPlusOne =
+        user.email && parentEmailsSet().has(user.email.trim().toLowerCase());
+      let plusOneStatus = "-";
+      if (isPlusOne) plusOneStatus = `+1 of ${user.parent_name}`;
+      else if (bringsPlusOne) plusOneStatus = "Brings +1";
+      const baseurl = "https://rsvp.xpengvisionnight.co.id/rsvp";
+
+      return [
+        user.name || "-",
+        user.category || "-",
+        user.company || "-",
+        user.email || "-",
+        plusOneStatus,
+        user.status_confirmation || "-",
+        user.status_attendance || "-",
+        user.vertical || "-",
+        `${baseurl}/${user.uniqueId}`,
+      ];
+    });
+
+    const csvMatrix = [
+      ["FILTERED BY:"],
+      ["Search Column", currentColumn],
+      ["Search Operator", currentOperator],
+      ["Search Value", currentSearchVal],
+      ["Category Filter", currentCategory],
+      ["Attendance Filter", currentAttendance],
+      ["Total Data", totalData],
+      [],
+      tableHeaders,
+      ...rows,
+    ];
+
+    const csvContent = csvMatrix
+      .map((row) =>
+        row
+          .map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+    const formattedDate = new Date().toISOString().slice(0, 10);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `guest_list_${formattedDate}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleSendEmail = (uniqueId, name) => {
+    const bodyPayload = {
+      action: "DIRECT_INVITE_USERS",
+      payload: { userIdas: [uniqueId] },
+    };
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      setLastSentName(name);
+      Swal.fire({
+        title: "Sending Invitation",
+        html: `<div class="text-zinc-300">Sending email to <span class="font-semibold text-white">${name}</span>...</div>`,
+        background: "#09090b",
+        color: "#ffffff",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+        customClass: { popup: "border border-zinc-800 rounded-2xl shadow-2xl" },
+      });
+      ws.send(JSON.stringify(bodyPayload));
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Koneksi WebSocket terputus!",
+        background: "#09090b",
+        color: "#ffffff",
+        confirmButtonColor: "#a3e635",
+      });
+    }
+  };
+
+  const handleAttend = (user) => {
+    const bodyPayload = {
+      action: "ATTEND",
+      payload: { attendUniqueId: user.uniqueId },
+    };
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      Swal.fire({
+        title: "Processing Attendance",
+        html: `<div class="text-zinc-300">Checking in <span class="font-semibold text-white">${user.name}</span>...</div>`,
+        background: "#09090b",
+        color: "#ffffff",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+        customClass: { popup: "border border-zinc-800 rounded-2xl shadow-2xl" },
+      });
+      ws.send(JSON.stringify(bodyPayload));
+
+      const timeString = new Date().toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const newHistoryItem = {
+        name: user.name,
+        company: user.company || user.dealer || "-",
+        category: user.category,
+        time: timeString,
+        plusOneOf:
+          user.parent_name && user.parent_name.trim() !== ""
+            ? user.parent_name
+            : null,
+      };
+      setManualHistory((prev) => [newHistoryItem, ...prev]);
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Koneksi WebSocket terputus!",
+        background: "#09090b",
+        color: "#ffffff",
+        confirmButtonColor: "#a3e635",
+      });
+    }
+  };
+
+  const startScanner = async () => {
+    if (scannerStarted()) return;
+    try {
+      scanner = new Html5Qrcode("reader");
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        async (decodedText) => {
+          await stopScanner();
+          ws.send(
+            JSON.stringify({
+              action: "ATTEND",
+              payload: { attendUniqueId: decodedText },
+            }),
+          );
+        },
+        () => {},
+      );
+      setScannerStarted(true);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const stopScanner = async () => {
+    try {
+      if (scanner && scannerStarted()) {
+        await scanner.stop();
+        await scanner.clear();
+        scanner = null;
+        setParticipant(null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setScannerStarted(false);
+  };
+
+  const style = createMemo(
+    () => categoryColor[participant()?.category] || categoryColor.VIP,
+  );
+  const isMerchandiseEligible = () => checkMerchEligibility(participant());
+
   const displaySummary = createMemo(() => {
     const result = {};
     Object.entries(summary().realUsers || {}).forEach(([category, data]) => {
@@ -660,6 +585,7 @@ export default function SummaryDashboard() {
     });
     return result;
   });
+
   const categoryQuota = {
     VIP: 620,
     DEALER: 470,
@@ -667,64 +593,41 @@ export default function SummaryDashboard() {
     LEASING: 210,
     MEDIA: 120,
     FRONT: 412,
-    // SVVIP: 8,
-    // VVIP: 60,
-    // "SALES LIVE STREAM": 48,
   };
   const tableCategories = createMemo(() => {
-    const categories = new Set([
-      ...Object.keys(displaySummary()),
-      ...Object.keys(categoryQuota),
-    ]);
-    return [...categories];
+    return [
+      ...new Set([
+        ...Object.keys(displaySummary()),
+        ...Object.keys(categoryQuota),
+      ]),
+    ];
   });
+
   const clearHistory = () => {
-    const confirmClear = confirm(
-      "Apakah kamu yakin ingin menghapus semua riwayat scan?",
-    );
-    if (confirmClear) {
-      // 1. Kosongkan state (agar langsung hilang di layar)
+    if (confirm("Apakah kamu yakin ingin menghapus semua riwayat scan?")) {
       setScanHistory([]);
       setParticipant(null);
-
-      // 2. Kosongkan/hapus juga dari localStorage agar pas di-refresh tidak muncul lagi
-      // Ganti 'scanHistory' dengan nama key yang kamu pakai di aplikasi kamu
       localStorage.removeItem("scanHistory");
-
-      // ATAU bisa juga di-set jadi array kosong string:
-      // localStorage.setItem("scanHistory", JSON.stringify([]));
     }
   };
 
   const clearManualHistory = () => {
-    // 1. Kosongkan state
     setManualHistory([]);
-
-    // 2. Hapus dari localStorage (sesuaikan nama key-nya)
     localStorage.removeItem("manualHistory");
   };
+
   const verticalSummaryMemo = createMemo(() => {
     const result = {};
     users().forEach((user) => {
       const vertical = user.vertical?.trim();
-
-      // VALIDASI: Jika tidak ada data vertical, atau vertical-nya kosong/"UNKNOWN", langsung skip.
-      // Ini otomatis mendepak Generated QR (Dummy Users) dari hitungan Vertical Summary.
       if (!vertical || vertical === "" || vertical === "UNKNOWN") return;
-
-      if (!result[vertical]) {
+      if (!result[vertical])
         result[vertical] = { total: 0, confirmed: 0, attended: 0 };
-      }
-
-      // Hanya user riil ber-vertical yang masuk ke sini
       result[vertical].total++;
-
-      if (user.status_confirmation?.trim() === "confirmed") {
+      if (user.status_confirmation?.trim() === "confirmed")
         result[vertical].confirmed++;
-      }
-      if (user.status_attendance?.trim() === "attended") {
+      if (user.status_attendance?.trim() === "attended")
         result[vertical].attended++;
-      }
     });
     return result;
   });
@@ -736,6 +639,7 @@ export default function SummaryDashboard() {
         <h1 class="text-4xl font-bold">XPENG V1SION NIGHT</h1>
         <p class="text-zinc-400 mt-2">Live Dashboard Summary</p>
       </div>
+
       <div class="flex items-center justify-between mb-8">
         <div class="flex gap-3">
           <button
@@ -774,6 +678,7 @@ export default function SummaryDashboard() {
           </button>
         </Show>
       </div>
+
       {/* SUMMARY TAB */}
       <Show when={activeTab() === "summary"}>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -837,8 +742,6 @@ export default function SummaryDashboard() {
                     "SVVIP",
                     "SALES LIVE STREAM",
                   ].includes(category);
-
-                  // UBAH DI SINI: Dibungkus fungsi getter () => {} agar reaktif
                   const remainingQuota = () =>
                     isNonRegistrationCategory
                       ? "-"
@@ -846,9 +749,22 @@ export default function SummaryDashboard() {
                         ? quota - data().confirmed
                         : "-";
 
+                  // 1. 🔥 Bikin helper reaktif untuk nge-cek apakah Attended melampaui Quota
+                  const isOverAttended = () =>
+                    !isNonRegistrationCategory &&
+                    quota !== undefined &&
+                    data().attended > quota;
+
                   return (
-                    <tr class="border-t border-zinc-800">
-                      <td class="p-4">{category}</td>
+                    // 2. 🔥 Gunakan classList untuk pasang background merah transparan jika over-quota
+                    <tr
+                      class="border-t border-zinc-800 transition-colors"
+                      classList={{
+                        "bg-red-950/30 border-l-2 border-l-red-500":
+                          isOverAttended(),
+                      }}
+                    >
+                      <td class="p-4 font-medium">{category}</td>
                       <td class="p-4">{quota ?? "-"}</td>
                       <td
                         class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : ""}`}
@@ -863,13 +779,26 @@ export default function SummaryDashboard() {
                       <td
                         class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : "text-yellow-400"}`}
                       >
-                        {/* JANGAN LUPA: Panggil sebagai fungsi dengan tanda kurung () */}
                         {remainingQuota()}
                       </td>
-                      <td
-                        class={`p-4 ${isNonRegistrationCategory ? "bg-zinc-800 text-zinc-500" : "text-lime-400"}`}
-                      >
-                        {isNonRegistrationCategory ? "-" : data().attended}
+                      <td class="p-4">
+                        <Show
+                          when={isNonRegistrationCategory}
+                          fallback={
+                            // 3. 🔥 Berikan badge border merah menyala di angka Attended-nya
+                            <span
+                              class={
+                                isOverAttended()
+                                  ? "text-red-400 font-bold bg-red-500/10 border border-red-500/30 px-2.5 py-1 rounded-lg inline-block"
+                                  : "text-lime-400"
+                              }
+                            >
+                              {data().attended}
+                            </span>
+                          }
+                        >
+                          <span class="text-zinc-500">-</span>
+                        </Show>
                       </td>
                     </tr>
                   );
@@ -1017,8 +946,7 @@ export default function SummaryDashboard() {
             <thead>
               <tr class="bg-zinc-800">
                 <th class="p-4 text-left">Vertical</th>
-                <th class="p-4 text-left">Registered</th>{" "}
-                {/* <--- Kolom Baru */}
+                <th class="p-4 text-left">Registered</th>
                 <th class="p-4 text-left">Confirmed</th>
                 <th class="p-4 text-left">Attended</th>
               </tr>
@@ -1028,8 +956,7 @@ export default function SummaryDashboard() {
                 {([vertical, data]) => (
                   <tr class="border-t border-zinc-800">
                     <td class="p-4">{vertical}</td>
-                    <td class="p-4 text-zinc-300">{data.total}</td>{" "}
-                    {/* <--- Tampilkan properti data.total */}
+                    <td class="p-4 text-zinc-300">{data.total}</td>
                     <td class="p-4 text-blue-400">{data.confirmed}</td>
                     <td class="p-4 text-lime-400">{data.attended}</td>
                   </tr>
@@ -1039,6 +966,7 @@ export default function SummaryDashboard() {
           </table>
         </div>
       </Show>
+
       {/* DETAILS TAB */}
       <Show when={activeTab() === "details"}>
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
@@ -1053,12 +981,11 @@ export default function SummaryDashboard() {
                   <option value="all">All Columns</option>
                   <option value="name">Nama</option>
                   <option value="email">Email</option>
+                  <option value="category">Category</option>
                   <option value="company">Company</option>
                   <option value="vertical">Vertical</option>
                 </select>
-
                 <span class="text-zinc-800 text-xs">/</span>
-
                 <select
                   value={searchOperator()}
                   onChange={(e) => setSearchOperator(e.currentTarget.value)}
@@ -1071,7 +998,6 @@ export default function SummaryDashboard() {
                   <option value="is_empty">is empty</option>
                   <option value="is_not_empty">is not empty</option>
                 </select>
-
                 <Show
                   when={
                     searchOperator() !== "is_empty" &&
@@ -1087,16 +1013,14 @@ export default function SummaryDashboard() {
                   />
                 </Show>
               </div>
-
               <div class="hidden md:block h-6 w-px bg-zinc-800 mx-1"></div>
-
               <div class="flex items-center gap-2">
                 <select
                   value={categoryFilter()}
                   onChange={(e) => setCategoryFilter(e.currentTarget.value)}
                   class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-zinc-600 cursor-pointer transition-colors"
                 >
-                  <option value="ALL">All Categories</option>{" "}
+                  <option value="ALL">All Categories</option>
                   <option>VIP</option>
                   <option>VVIP</option>
                   <option>SUPER VVIP</option>
@@ -1105,7 +1029,6 @@ export default function SummaryDashboard() {
                   <option>MEDIA</option>
                   <option>FRONT</option>
                 </select>
-
                 <select
                   value={attendanceFilter()}
                   onChange={(e) => setAttendanceFilter(e.currentTarget.value)}
@@ -1127,7 +1050,7 @@ export default function SummaryDashboard() {
 
           <div class="overflow-auto max-h-[75vh]">
             <table class="w-full text-sm">
-              <thead class="sticky top-0 bg-zinc-800 z-10">
+              <thead class="sticky top-0 bg-zinc-800 z-30">
                 <tr>
                   <th class="p-3 text-left">
                     <button
@@ -1193,7 +1116,6 @@ export default function SummaryDashboard() {
                       Vertical <ArrowUpDown size={14} />
                     </button>
                   </th>
-                  {/* Diubah dari Email menjadi Email Sender */}
                   <th class="p-3 text-left text-zinc-400 font-medium">
                     Email Sender
                   </th>
@@ -1210,7 +1132,6 @@ export default function SummaryDashboard() {
                     const bringsPlusOne =
                       user.email &&
                       parentEmailsSet().has(user.email.trim().toLowerCase());
-
                     const baseurl = "https://rsvp.xpengvisionnight.co.id/rsvp";
 
                     return (
@@ -1224,10 +1145,9 @@ export default function SummaryDashboard() {
                             {isPlusOne && (
                               <button
                                 type="button"
-                                // Contoh untuk tombol "+1 of"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSearchColumn("name"); // Set kolom pencarian langsung ke Nama
+                                  setSearchColumn("name");
                                   setSearchOperator("contains");
                                   setSearchValue(
                                     user.parent_name?.trim() || "",
@@ -1239,7 +1159,6 @@ export default function SummaryDashboard() {
                                 +1 of {user.parent_name}
                               </button>
                             )}
-
                             {bringsPlusOne && (
                               <button
                                 type="button"
@@ -1254,7 +1173,6 @@ export default function SummaryDashboard() {
                                 Brings +1
                               </button>
                             )}
-
                             {!isPlusOne && !bringsPlusOne && (
                               <span class="text-zinc-600 pl-2">-</span>
                             )}
@@ -1283,8 +1201,6 @@ export default function SummaryDashboard() {
                           </span>
                         </td>
                         <td class="p-3 text-zinc-400">{user.vertical}</td>
-
-                        {/* Kolom Baru: Email Sender */}
                         <td class="p-3">
                           {!isPlusOne ? (
                             <button
@@ -1306,7 +1222,6 @@ export default function SummaryDashboard() {
                             </span>
                           )}
                         </td>
-
                         <td class="p-3">
                           <div class="flex items-center gap-3">
                             <a
@@ -1317,14 +1232,12 @@ export default function SummaryDashboard() {
                             >
                               Open Link ↗
                             </a>
-
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const url = `${baseurl}/${user.uniqueId}`;
                                 navigator.clipboard.writeText(url);
-
                                 setCopiedId(user.uniqueId);
                                 setTimeout(() => setCopiedId(""), 2000);
                               }}
@@ -1349,12 +1262,11 @@ export default function SummaryDashboard() {
           </div>
         </div>
       </Show>
+
       {/* MANUAL TAB */}
       <Show when={activeTab() === "manual"}>
         <div class="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-6 items-start">
-          {/* SISI KIRI: PANDUAN & MANUAL HISTORY PANEL */}
           <div class="flex flex-col gap-6 w-full xl:sticky xl:top-4">
-            {/* Box 1: Panduan */}
             <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
               <h3 class="text-white font-semibold text-lg mb-2">
                 Manual Attendance
@@ -1367,15 +1279,12 @@ export default function SummaryDashboard() {
               </p>
             </div>
 
-            {/* Box 2: Manual History Panel */}
             <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col max-h-[50vh] xl:max-h-[55vh]">
               <div class="flex justify-between items-center mb-4 border-b border-zinc-800 pb-3">
                 <h4 class="text-white font-medium text-sm flex items-center gap-2">
                   <span class="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span>
                   Manual Check-ins
                 </h4>
-
-                {/* Menggunakan clearManualHistory yang terpisah */}
                 <Show when={manualHistory().length > 0}>
                   <button
                     onClick={clearManualHistory}
@@ -1386,7 +1295,6 @@ export default function SummaryDashboard() {
                 </Show>
               </div>
 
-              {/* List Riwayat Manual */}
               <div class="overflow-y-auto space-y-3 pr-1 flex-1">
                 <Show
                   when={manualHistory().length > 0}
@@ -1407,11 +1315,9 @@ export default function SummaryDashboard() {
                             {item.time}
                           </span>
                         </div>
-
                         <div class="text-zinc-400 text-xs line-clamp-1">
                           {item.company || "-"}
                         </div>
-
                         <div class="flex items-center justify-between mt-1 pt-1 border-t border-zinc-900">
                           <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-zinc-900 text-lime-400 border border-zinc-800">
                             {item.category}
@@ -1430,13 +1336,9 @@ export default function SummaryDashboard() {
             </div>
           </div>
 
-          {/* SISI KANAN: TABEL DATA USER DENGAN SEARCH & SORT */}
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-            {/* HEADER TABEL */}
             <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-4">
               <h3 class="text-white font-medium text-sm">Daftar Tamu</h3>
-
-              {/* Quick Search Input */}
               <div class="relative w-full sm:w-72">
                 <input
                   type="text"
@@ -1461,7 +1363,6 @@ export default function SummaryDashboard() {
               </div>
             </div>
 
-            {/* CONTAINER TABEL */}
             <div class="overflow-auto max-h-[75vh]">
               <table class="w-full text-sm">
                 <thead class="sticky top-0 bg-zinc-800 z-10 text-zinc-300">
@@ -1497,7 +1398,6 @@ export default function SummaryDashboard() {
                   <For each={filteredUsers()}>
                     {(user) => {
                       const isAttended = user.status_attendance === "attended";
-
                       return (
                         <tr class="border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors">
                           <td class="p-3 font-medium text-white">
@@ -1515,7 +1415,6 @@ export default function SummaryDashboard() {
                               disabled={isAttended}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // DIUBAH: Sekarang mengirimkan full object user
                                 handleAttend(user);
                               }}
                               class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed"
@@ -1533,7 +1432,6 @@ export default function SummaryDashboard() {
                       );
                     }}
                   </For>
-
                   <Show when={filteredUsers().length === 0}>
                     <tr>
                       <td
@@ -1550,6 +1448,7 @@ export default function SummaryDashboard() {
           </div>
         </div>
       </Show>
+
       {/* SCANNER TAB */}
       <Show when={activeTab() === "scanner"}>
         <div class="grid grid-cols-1 xl:grid-cols-[500px_1fr] gap-6">
@@ -1595,7 +1494,7 @@ export default function SummaryDashboard() {
                 </div>
                 <div>
                   <div class="text-zinc-500">Company</div>
-                  <div class="font-medium">{participant().company}</div>
+                  <div class="font-medium">{participant().company || "-"}</div>
                 </div>
                 <div>
                   <div class="text-zinc-500">Category</div>
@@ -1609,6 +1508,21 @@ export default function SummaryDashboard() {
                     {participant().vertical}
                   </div>
                 </div>
+
+                {/* Menampilkan Asal Cabang Dealer Jika Kategori adalah DEALER */}
+                <Show
+                  when={
+                    participant().category === "DEALER" || participant().dealer
+                  }
+                >
+                  <div>
+                    <div class="text-zinc-500">Dealer Branch</div>
+                    <div class="font-medium text-cyan-400">
+                      {participant().dealer || participant().company || "-"}
+                    </div>
+                  </div>
+                </Show>
+
                 <Show when={participant().plusOneOf}>
                   <div>
                     <div class="text-zinc-500">Plus One Of</div>
@@ -1624,11 +1538,20 @@ export default function SummaryDashboard() {
                   ✓ ATTENDANCE CONFIRMED
                 </div>
                 <div class="mt-2 text-zinc-300">Participant data is valid.</div>
-                <Show when={isMerchandiseEligible()}>
+
+                <Show
+                  when={isMerchandiseEligible()}
+                  fallback={
+                    <div class="mt-4 p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 text-zinc-500 font-medium text-center">
+                      ❌ NOT ELIGIBLE FOR MERCHANDISE
+                    </div>
+                  }
+                >
                   <div class="mt-4 p-4 rounded-xl border border-orange-400 bg-orange-500/10 text-orange-300 font-bold text-center">
                     🎁 THIS USER IS ELIGIBLE FOR MERCHANDISE
                   </div>
                 </Show>
+
                 <button
                   class={`mt-8 w-full py-5 rounded-xl font-bold text-xl text-black ${categoryColor[participant()?.category]?.bg || "bg-zinc-700"}`}
                 >
@@ -1646,9 +1569,7 @@ export default function SummaryDashboard() {
         >
           <div class="p-5 flex justify-between items-center border-b border-zinc-800">
             <h2 class="text-xl font-bold">Scan History</h2>
-
             <div class="flex items-center gap-4">
-              {/* TOMBOL CLEAR HISTORY */}
               <Show when={scanHistory().length > 0}>
                 <button
                   onClick={clearHistory}
@@ -1657,7 +1578,6 @@ export default function SummaryDashboard() {
                   Clear All
                 </button>
               </Show>
-
               <button
                 onClick={() => setShowHistory(false)}
                 class="text-zinc-400 hover:text-white"
@@ -1668,18 +1588,18 @@ export default function SummaryDashboard() {
           </div>
 
           <div class="overflow-y-auto h-full p-4 space-y-3 pb-24">
-            {/* TAMPILAN JIKA HISTORY KOSONG */}
             <Show when={scanHistory().length === 0}>
               <div class="text-center text-zinc-600 mt-10 text-sm">
                 Belum ada riwayat scan.
               </div>
             </Show>
-
             <For each={scanHistory()}>
               {(item) => (
                 <div class="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
                   <div class="font-bold text-lg">{item.name}</div>
-                  <div class="text-zinc-400 text-sm">{item.company}</div>
+                  <div class="text-zinc-400 text-sm">
+                    {item.company || item.dealer || "-"}
+                  </div>
                   <Show when={item.plusOneOf}>
                     <div class="mt-2 text-xs text-yellow-400">
                       +1 Of: {item.plusOneOf}

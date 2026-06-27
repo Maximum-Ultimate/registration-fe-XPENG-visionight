@@ -2,13 +2,37 @@ import { createSignal, Show, For, onMount } from "solid-js";
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
-import { sendWS } from "../services/ws";
 import heroRegular from "../assets/KVFHDWEB.png";
 import html2canvas from "html2canvas";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
 export default function DummyQrGenerator() {
+  const categories = [
+    "COMMUNITY",
+    "MEDIA",
+    "VIP",
+    "VVIP",
+    "SUPER VVIP",
+    "DEALER",
+    "FRONT",
+    "LEASING",
+  ];
+
+  // State navigasi Tab
+  const [activeTab, setActiveTab] = createSignal("batch");
+
+  // State Pendaftaran Tamu Ringkas
+  const [regName, setRegName] = createSignal("");
+  const [regEmail, setRegEmail] = createSignal("");
+  const [regPhone, setRegPhone] = createSignal("");
+  const [regCompany, setRegCompany] = createSignal("");
+  const [regCategory, setRegCategory] = createSignal("VIP");
+
+  // State Menampung data response sukses dari server
+  const [lastRegisteredUser, setLastRegisteredUser] = createSignal(null);
+
+  // State internal batch dummy
   const [counts, setCounts] = createSignal({
     COMMUNITY: 0,
     MEDIA: 0,
@@ -25,7 +49,7 @@ export default function DummyQrGenerator() {
   const [users, setUsers] = createSignal([]);
   const [dummySummary, setDummySummary] = createSignal({});
   const [isSpecialMode, setIsSpecialMode] = createSignal(false);
-  const [specialIndex, setSpecialIndex] = createSignal(-1); // Melacak index kategori aktif
+  const [specialIndex, setSpecialIndex] = createSignal(-1);
   const [specificId, setSpecificId] = createSignal("");
   const [specificName, setSpecificName] = createSignal("");
   const [specificCat, setSpecificCat] = createSignal("VIP");
@@ -44,29 +68,70 @@ export default function DummyQrGenerator() {
       const response = JSON.parse(event.data);
       console.log("WS RESPONSE:", response);
 
-      // ==========================
-      // DASHBOARD SUMMARY
-      // ==========================
+      // ==========================================
+      // MENANGKAP RESPON REGISTER SINGLE TAMU
+      // ==========================================
+      if (response?.type === "registered") {
+        setLoading(false);
+        if (response?.status === "success") {
+          const baseCloudUrl = "https://cloud.xpengvisionnight.co.id";
+          const qrPath = response.data?.qrCodeFilePath || "";
+          
+          // 🔥 EKSTRAKSI UUID LANGSUNG DARI FILE PATH
+          const extractedUniqueId = qrPath.split('/').pop()?.replace('.png', '') || String(response.data?.userId || "");
+          const fullQrUrl = qrPath ? `${baseCloudUrl}/${qrPath}` : "";
+
+          // Daftarkan ke state agar dibaca preview card & template PDF
+          setLastRegisteredUser({
+            userId: response.data?.userId || "PENDING",
+            uniqueId: extractedUniqueId, 
+            name: regName(),
+            category: regCategory(),
+            company: regCompany() || "-",
+            qrCodeUrl: fullQrUrl,
+          });
+
+          await Swal.fire({
+            icon: "success",
+            title: "Registration Successful",
+            text: `Tamu bernama ${regName()} sukses terdaftar. QR Code tampil di layar!`,
+            confirmButtonColor: "#D8FF24",
+            background: "#111111",
+            color: "#ffffff",
+            timer: 2000
+          });
+
+          // Reset Form input utama
+          setRegName("");
+          setRegEmail("");
+          setRegPhone("");
+          setRegCompany("");
+          
+          localWs.send(JSON.stringify({ action: "GET_DASHBOARD_SUMMARY" }));
+        } else {
+          await Swal.fire({
+            icon: "error",
+            title: "Registration Failed",
+            text: response?.message || response?.error || "Gagal memproses pendaftaran.",
+            confirmButtonColor: "#D8FF24",
+            background: "#111111",
+            color: "#ffffff",
+          });
+        }
+        return;
+      }
+
+      // ==========================================
+      // HANDLER MASSAL BATCH & SUMMARY
+      // ==========================================
       if (response.type === "DASHBOARD_SUMMARY") {
         setDummySummary(response.data?.dummyUsers || {});
         return;
       }
 
-      // ==========================
-      // GENERATE SUCCESS (Ubah ke ZIP Compact)
-      // ==========================
-      if (
-        response.status === "success" &&
-        response.type === "dummy-users-generated"
-      ) {
+      if (response.status === "success" && response.type === "dummy-users-generated") {
         setUsers(response.data);
-
-        // JIKA SEDANG DALAM MODE SPESIAL 10 PER KATEGORI
         if (isSpecialMode()) {
-          console.log(
-            `[Special Mode] Berhasil menerima data untuk: ${selectedCategory()} (Index: ${specialIndex()})`,
-          );
-
           const modifiedData = response.data.map((user) => ({
             ...user,
             name: `${user.name} (Special Batch)`,
@@ -78,45 +143,20 @@ export default function DummyQrGenerator() {
           });
 
           try {
-            await createCompactPdf(
-              modifiedData,
-              `${selectedCategory()}_SPECIAL_10_${Date.now()}`,
-            );
-
-            // Hitung indeks kategori berikutnya
+            await createCompactPdf(modifiedData, `${selectedCategory()}_SPECIAL_10_${Date.now()}`);
             const nextIdx = specialIndex() + 1;
 
             if (nextIdx < categories.length) {
               const nextCategory = categories[nextIdx];
-              console.log(
-                `[Special Mode] Bergerak ke kategori berikutnya: ${nextCategory} (Index: ${nextIdx})`,
-              );
-
-              // Update state sebelum menembak WS berikutnya
               setSpecialIndex(nextIdx);
               setSelectedCategory(nextCategory);
-
-              // Jeda 1 detik agar WS dan UI proses canvas tidak tabrakan
               setTimeout(() => {
-                console.log(
-                  `[Special Mode] Menembak WS Request untuk: ${nextCategory}`,
-                );
-                localWs.send(
-                  JSON.stringify({
-                    action: "GENERATE_DUMMY_QR",
-                    payload: { category: nextCategory, count: 10 },
-                  }),
-                );
+                localWs.send(JSON.stringify({ action: "GENERATE_DUMMY_QR", payload: { category: nextCategory, count: 10 } }));
               }, 1000);
             } else {
-              // Jika semua kategori (0 sampai 7) sudah selesai dijalankan
-              console.log(
-                "[Special Mode] Selesai! Semua kategori berhasil diunduh.",
-              );
               setIsSpecialMode(false);
               setSpecialIndex(-1);
               setLoading(false);
-
               Swal.fire({
                 icon: "success",
                 title: "All Special Batches Downloaded!",
@@ -124,41 +164,24 @@ export default function DummyQrGenerator() {
                 background: "#111827",
                 color: "#fff",
               });
-
               localWs.send(JSON.stringify({ action: "GET_DASHBOARD_SUMMARY" }));
             }
           } catch (err) {
-            console.error("[Special Mode] Error sewaktu generate ZIP:", err);
             setIsSpecialMode(false);
             setSpecialIndex(-1);
             setLoading(false);
-            Swal.fire({
-              icon: "error",
-              title: "Special Generation Failed",
-              text: err.message,
-              background: "#111827",
-              color: "#fff",
-            });
+            Swal.fire({ icon: "error", title: "Special Generation Failed", text: err.message, background: "#111827", color: "#fff" });
           }
           return;
         }
-        // Ubah Alert Loading ke ZIP
+
         Swal.update({
           title: "Preparing ZIP...",
-          html: `
-            ${response.data.length} QR generated <br/>
-            Packing into ZIP per batch...
-          `,
+          html: `${response.data.length} QR generated <br/>Packing into ZIP per batch...`,
         });
 
         try {
-          // DI SINI DIUBAH: Menggunakan createCompactPdf agar outputnya ZIP
-          // Ditambahkan suffix '_BATCH' supaya beda nama filenya dengan download category total
-          await createCompactPdf(
-            response.data,
-            `${selectedCategory()}_BATCH_${Date.now()}`,
-          );
-
+          await createCompactPdf(response.data, `${selectedCategory()}_BATCH_${Date.now()}`);
           Swal.fire({
             icon: "success",
             title: "ZIP Downloaded",
@@ -168,106 +191,44 @@ export default function DummyQrGenerator() {
             background: "#111827",
             color: "#fff",
           });
-
           localWs.send(JSON.stringify({ action: "GET_DASHBOARD_SUMMARY" }));
         } catch (err) {
-          console.error(err);
-          Swal.fire({
-            icon: "error",
-            title: "ZIP Generation Failed",
-            text: err.message,
-            background: "#111827",
-            color: "#fff",
-          });
+          Swal.fire({ icon: "error", title: "ZIP Generation Failed", text: err.message, background: "#111827", color: "#fff" });
         }
         setLoading(false);
         return;
       }
 
-      // ==========================
-      // RESPONSE SPESIFIC USER
-      // ==========================
       if (response.type === "user-detail") {
-        // Validasi jika user tidak ditemukan di database
         if (!response.data || !response.data.uniqueId) {
-          Swal.fire({
-            icon: "error",
-            title: "User Tidak Ditemukan",
-            text: "Unique ID tidak terdaftar di database server.",
-            background: "#111827",
-            color: "#fff",
-          });
+          Swal.fire({ icon: "error", title: "User Tidak Ditemukan", text: "Unique ID tidak terdaftar di database server.", background: "#111827", color: "#fff" });
           return;
         }
 
-        Swal.update({
-          title: "Generating PDF...",
-          html: "Mempersiapkan undangan...",
-        });
+        Swal.update({ title: "Generating PDF...", html: "Mempersiapkan undangan..." });
 
         try {
-          // 1. Generate PDF untuk Main User
           await createPdf([response.data], response.data.category || "VIP");
-
-          // 2. Jika user membawa Guest (Plus One), otomatis download juga PDF buat guest-nya
           if (response.data.guest && response.data.guest.uniqueId) {
-            // Kasih delay dikit biar proses html2canvas tidak bentrok
             await new Promise((r) => setTimeout(r, 500));
-            await createPdf(
-              [response.data.guest],
-              response.data.guest.category || "VIP",
-            );
+            await createPdf([response.data.guest], response.data.guest.category || "VIP");
           }
-
-          Swal.fire({
-            icon: "success",
-            title: "Berhasil!",
-            text: "PDF Undangan Berhasil didownload",
-            background: "#111827",
-            color: "#fff",
-            timer: 2000,
-            showConfirmButton: false,
-          });
+          Swal.fire({ icon: "success", title: "Berhasil!", text: "PDF Undangan Berhasil didownload", background: "#111827", color: "#fff", timer: 2000, showConfirmButton: false });
         } catch (err) {
-          console.error(err);
-          Swal.fire({
-            icon: "error",
-            title: "Gagal",
-            text: err.message,
-            background: "#111827",
-            color: "#fff",
-          });
+          Swal.fire({ icon: "error", title: "Gagal", text: err.message, background: "#111827", color: "#fff" });
         }
         return;
       }
 
-      // ==========================
-      // GENERATE FAILED
-      // ==========================
       if (response.type === "dummy-users-generated-error") {
         setLoading(false);
-        Swal.fire({
-          icon: "error",
-          title: "Generate Failed",
-          text: response.message || "Failed generate QR",
-          background: "#111827",
-          color: "#fff",
-        });
+        Swal.fire({ icon: "error", title: "Generate Failed", text: response.message || "Failed generate QR", background: "#111827", color: "#fff" });
         return;
       }
 
-      // ==========================
-      // DOWNLOAD CATEGORY ALL
-      // ==========================
       if (response.type === "DOWNLOAD_DUMMY_CATEGORY_RESPONSE") {
         if (!response.success) {
-          Swal.fire({
-            icon: "error",
-            title: "Download Failed",
-            text: response.message,
-            background: "#111827",
-            color: "#fff",
-          });
+          Swal.fire({ icon: "error", title: "Download Failed", text: response.message, background: "#111827", color: "#fff" });
           return;
         }
 
@@ -279,52 +240,96 @@ export default function DummyQrGenerator() {
           showConfirmButton: false,
           background: "#111827",
           color: "#fff",
-          didOpen: () => {
-            Swal.showLoading();
-          },
+          didOpen: () => { Swal.showLoading(); },
         });
 
         try {
           await createCompactPdf(response.data, response.category);
-          Swal.fire({
-            icon: "success",
-            title: "Download Complete",
-            text: `${response.category}_QR.zip downloaded`,
-            background: "#111827",
-            color: "#fff",
-          });
+          Swal.fire({ icon: "success", title: "Download Complete", text: `${response.category}_QR.zip downloaded`, background: "#111827", color: "#fff" });
         } catch (err) {
-          console.error(err);
-          Swal.fire({
-            icon: "error",
-            title: "ZIP Generation Failed",
-            text: err.message,
-            background: "#111827",
-            color: "#fff",
-          });
+          Swal.fire({ icon: "error", title: "ZIP Generation Failed", text: err.message, background: "#111827", color: "#fff" });
         }
         return;
       }
     };
-
-    localWs.onerror = (err) => {
-      console.error("WS Error", err);
-    };
   });
+
+  const handleRegisterSingleUser = (e) => {
+    if (e) e.preventDefault();
+
+    if (!regName() || !regEmail()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Validasi Gagal",
+        text: "Nama Lengkap dan Email wajib diisi!",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+      return;
+    }
+
+    if (loading()) return;
+    setLoading(true);
+
+    const mockMd5Password = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    const payload = {
+      action: "REGISTER",
+      payload: {
+        name: regName(),
+        email: regEmail(),
+        phone: regPhone() || "-",
+        company: regCompany() || "-",
+        position: "-", 
+        city: "-",
+        source: "DASHBOARD_MANUAL",
+        category: regCategory(),
+        dealer_id: 0,
+        password: mockMd5Password,
+        sendEmail: false, 
+        status_confirmation: "confirmed",
+      },
+    };
+
+    Swal.fire({
+      title: "Registering Guest...",
+      text: "Sedang memproses data ke database server...",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      background: "#111111",
+      color: "#ffffff",
+      didOpen: () => { Swal.showLoading(); },
+    });
+
+    if (localWs && localWs.readyState === WebSocket.OPEN) {
+      localWs.send(JSON.stringify(payload));
+    } else {
+      setLoading(false);
+      Swal.fire({
+        icon: "error",
+        title: "Koneksi Terputus",
+        text: "WebSocket tidak terhubung ke server. Silakan refresh.",
+        confirmButtonColor: "#D8FF24",
+        background: "#111111",
+        color: "#ffffff",
+      });
+    }
+  };
 
   const createPdf = async (users, categoryName) => {
     let pdf = null;
-    const eventTime = ["VIP", "VVIP", "SUPER VVIP"].includes(categoryName)
-      ? "16.30 - 21.00 WIB"
-      : "14.00 - 21.00 WIB";
+    const eventTime = ["VIP", "VVIP", "SUPER VVIP"].includes(categoryName) ? "16.30 - 21.00 WIB" : "14.00 - 21.00 WIB";
     const container = document.getElementById("pdf-render-container");
 
     for (let i = 0; i < users.length; i++) {
       const user = users[i];
-      const qrImage = await QRCode.toDataURL(user.uniqueId, {
-        width: 800,
-        margin: 1,
-      });
+      
+      const qrImage = user.qrCodeUrl 
+        ? user.qrCodeUrl 
+        : await QRCode.toDataURL(user.uniqueId || String(user.userId || ""), { width: 800, margin: 1 });
 
       container.innerHTML = `
       <div style="width:900px; box-sizing:border-box; background:#000; color:white; padding:40px; font-family:Arial,sans-serif;">
@@ -337,11 +342,13 @@ export default function DummyQrGenerator() {
           <div style="background:#D8FF24; color:#000; text-align:center; font-weight:700; padding:20px; font-size:28px;">${categoryName}</div>
           <div style="padding:50px;">
             <div style="display:flex; justify-content:center;">
-              <div style="width:350px; height:350px; background:white; border-radius:24px; display:flex; justify-content:center; align-items:center; padding:15px;"><img src="${qrImage}" style="width:320px; height:320px; display:block;" /></div>
+              <div style="width:350px; height:350px; background:white; border-radius:24px; display:flex; justify-content:center; align-items:center; padding:15px;">
+                <img src="${qrImage}" style="width:320px; height:320px; display:block;" />
+              </div>
             </div>
             <div style="margin-top:40px; text-align:center; color:white;">
               <div style="margin-bottom:25px;"><div style="color:#9ca3af; font-size:18px; margin-bottom:5px;">Name</div><div style="font-size:32px; font-weight:700; word-break:break-word;">${user.name}</div></div>
-              <div><div style="color:#9ca3af; font-size:18px; margin-bottom:5px;">Registration ID</div><div style="font-size:24px; font-weight:600;">${user.uniqueId}</div></div>
+              <div><div style="color:#9ca3af; font-size:18px; margin-bottom:5px;">Registration ID</div><div style="font-size:24px; font-weight:600;">${user.uniqueId || user.userId}</div></div>
             </div>
           </div>
         </div>
@@ -351,43 +358,27 @@ export default function DummyQrGenerator() {
         </div>
       </div>`;
 
-      await new Promise((r) => setTimeout(r, 300));
-      const canvas = await html2canvas(container.firstElementChild, {
-        scale: 2,
-        backgroundColor: "#000000",
-        useCORS: true,
-      });
+      await new Promise((r) => setTimeout(r, 400)); 
+      const canvas = await html2canvas(container.firstElementChild, { scale: 2, backgroundColor: "#000000", useCORS: true });
       const imgData = canvas.toDataURL("image/png");
 
       if (!pdf) {
-        pdf = new jsPDF({
-          orientation: canvas.width > canvas.height ? "landscape" : "portrait",
-          unit: "px",
-          format: [canvas.width, canvas.height],
-        });
+        pdf = new jsPDF({ orientation: canvas.width > canvas.height ? "landscape" : "portrait", unit: "px", format: [canvas.width, canvas.height] });
       } else {
         pdf.addPage([canvas.width, canvas.height]);
       }
       pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
     }
-    if (pdf) {
-      pdf.save(`${categoryName}-${Date.now()}.pdf`);
-    }
+    if (pdf) pdf.save(`${categoryName}-${Date.now()}.pdf`);
   };
 
-  // Fungsi Compact Template Milikmu (Tetap Utuh)
   const createCompactPdf = async (users, category) => {
     const zip = new JSZip();
     const container = document.getElementById("pdf-render-container");
-    const eventTime = ["VIP", "VVIP", "SUPER VVIP"].includes(category)
-      ? "16.30 - 21.00 WIB"
-      : "14.00 - 21.00 WIB";
+    const eventTime = ["VIP", "VVIP", "SUPER VVIP"].includes(category) ? "16.30 - 21.00 WIB" : "14.00 - 21.00 WIB";
 
     for (const user of users) {
-      const qrImage = await QRCode.toDataURL(user.uniqueId, {
-        width: 1000,
-        margin: 1,
-      });
+      const qrImage = await QRCode.toDataURL(user.uniqueId, { width: 1000, margin: 1 });
       container.innerHTML = `
       <div style="width:600px; background:#000; color:white; padding:32px; font-family:Arial,sans-serif; box-sizing:border-box;">
         <div style="border:1px solid #D8FF24; border-radius:24px; overflow:hidden; background:#050505;">
@@ -417,25 +408,9 @@ export default function DummyQrGenerator() {
       </div>`;
 
       await new Promise((r) => setTimeout(r, 100));
-      const canvas = await html2canvas(container.firstElementChild, {
-        scale: 2,
-        backgroundColor: "#000000",
-        useCORS: true,
-      });
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "px",
-        format: [canvas.width, canvas.height],
-      });
-      pdf.addImage(
-        canvas.toDataURL("image/png"),
-        "PNG",
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-      );
-
+      const canvas = await html2canvas(container.firstElementChild, { scale: 2, backgroundColor: "#000000", useCORS: true });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: [canvas.width, canvas.height] });
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, canvas.width, canvas.height);
       zip.file(`${user.name}.pdf`, pdf.output("blob"));
     }
 
@@ -445,169 +420,60 @@ export default function DummyQrGenerator() {
 
   const generateInstantQR = async () => {
     if (!specificName() || !specificId()) {
-      Swal.fire({
-        icon: "error",
-        title: "Input Kurang",
-        text: "Nama dan Unique ID wajib diisi!",
-        background: "#111827",
-        color: "#fff",
-      });
+      Swal.fire({ icon: "error", title: "Input Kurang", text: "Nama dan Unique ID wajib diisi!", background: "#111827", color: "#fff" });
       return;
     }
-    Swal.fire({
-      title: "Preparing PDF...",
-      text: "Rendering QR Code khusus...",
-      allowOutsideClick: false,
-      showConfirmButton: false,
-      background: "#111827",
-      color: "#fff",
-      didOpen: () => {
-        Swal.showLoading();
-      },
-    });
+    Swal.fire({ title: "Preparing PDF...", text: "Rendering QR Code khusus...", allowOutsideClick: false, showConfirmButton: false, background: "#111827", color: "#fff", didOpen: () => { Swal.showLoading(); } });
     try {
-      await createPdf(
-        [{ name: specificName(), uniqueId: specificId() }],
-        specificCat(),
-      );
-      Swal.fire({
-        icon: "success",
-        title: "Downloaded",
-        text: "PDF berhasil dibuat!",
-        background: "#111827",
-        color: "#fff",
-        timer: 1500,
-      });
+      await createPdf([{ name: specificName(), uniqueId: specificId() }], specificCat());
+      Swal.fire({ icon: "success", title: "Downloaded", text: "PDF berhasil dibuat!", background: "#111827", color: "#fff", timer: 1500 });
     } catch (err) {
-      Swal.fire({
-        icon: "error",
-        title: "Gagal",
-        text: err.message,
-        background: "#111827",
-        color: "#fff",
-      });
+      Swal.fire({ icon: "error", title: "Gagal", text: err.message, background: "#111827", color: "#fff" });
     }
   };
 
   const fetchAndDownloadFromWS = () => {
     if (!specificId()) {
-      Swal.fire({
-        icon: "error",
-        title: "Unique ID Kosong",
-        background: "#111827",
-        color: "#fff",
-      });
+      Swal.fire({ icon: "error", title: "Unique ID Kosong", background: "#111827", color: "#fff" });
       return;
     }
-
-    Swal.fire({
-      title: "Mencari data...",
-      background: "#111827",
-      color: "#fff",
-      didOpen: () => {
-        Swal.showLoading();
-      },
-    });
-
-    // Kirim sesuai format case di backend lu
-    localWs.send(
-      JSON.stringify({
-        action: "GET_USER_BY_UNIQUEID",
-        payload: { uniqueId: specificId() },
-      }),
-    );
+    Swal.fire({ title: "Mencari data...", background: "#111827", color: "#fff", didOpen: () => { Swal.showLoading(); } });
+    localWs.send(JSON.stringify({ action: "GET_USER_BY_UNIQUEID", payload: { uniqueId: specificId() } }));
   };
 
   const generateDummyQR = async (category) => {
     if (!localWs || localWs.readyState !== WebSocket.OPEN) {
-      Swal.fire({
-        icon: "error",
-        title: "WebSocket Not Connected",
-        background: "#111827",
-        color: "#fff",
-      });
+      Swal.fire({ icon: "error", title: "WebSocket Not Connected", background: "#111827", color: "#fff" });
       return;
     }
-    Swal.fire({
-      title: "Generating QR...",
-      text: "Please wait...",
-      allowOutsideClick: false,
-      showConfirmButton: false,
-      background: "#111827",
-      color: "#fff",
-      didOpen: () => {
-        Swal.showLoading();
-      },
-    });
+    Swal.fire({ title: "Generating QR...", text: "Please wait...", allowOutsideClick: false, showConfirmButton: false, background: "#111827", color: "#fff", didOpen: () => { Swal.showLoading(); } });
     setLoading(true);
     setSelectedCategory(category);
-    localWs.send(
-      JSON.stringify({
-        action: "GENERATE_DUMMY_QR",
-        payload: { category, count: counts()[category] },
-      }),
-    );
+    localWs.send(JSON.stringify({ action: "GENERATE_DUMMY_QR", payload: { category, count: counts()[category] } }));
   };
 
   const downloadCategory = (category) => {
-    localWs.send(
-      JSON.stringify({
-        action: "DOWNLOAD_DUMMY_CATEGORY",
-        payload: { category },
-      }),
-    );
+    localWs.send(JSON.stringify({ action: "DOWNLOAD_DUMMY_CATEGORY", payload: { category } }));
   };
+
   const generateTenDistinctPerCategory = () => {
-  if (!localWs || localWs.readyState !== WebSocket.OPEN) {
-    Swal.fire({
-      icon: "error",
-      title: "WebSocket Not Connected",
-      background: "#111827",
-      color: "#fff",
-    });
-    return;
-  }
+    if (!localWs || localWs.readyState !== WebSocket.OPEN) {
+      Swal.fire({ icon: "error", title: "WebSocket Not Connected", background: "#111827", color: "#fff" });
+      return;
+    }
 
-  Swal.fire({
-    title: "Starting Special Sequence",
-    text: "Generating exactly 10 distinct QRs for each category sequentially...",
-    allowOutsideClick: false,
-    showConfirmButton: false,
-    background: "#111827",
-    color: "#fff",
-    didOpen: () => {
-      Swal.showLoading();
-    },
-  });
+    Swal.fire({ title: "Starting Special Sequence", text: "Generating exactly 10 distinct QRs for each category sequentially...", allowOutsideClick: false, showConfirmButton: false, background: "#111827", color: "#fff", didOpen: () => { Swal.showLoading(); } });
 
-  setIsSpecialMode(true);
-  setLoading(true);
-  
-  // Mulai sekuensial dari index 0 (COMMUNITY)
-  const firstCategory = categories[0];
-  setSpecialIndex(0);
-  setSelectedCategory(firstCategory);
+    setIsSpecialMode(true);
+    setLoading(true);
 
-  console.log(`[Special Mode] Memulai urutan pertama: ${firstCategory} (Index: 0)`);
-  
-  localWs.send(
-    JSON.stringify({
-      action: "GENERATE_DUMMY_QR",
-      payload: { category: firstCategory, count: 10 },
-    })
-  );
-};
+    const firstCategory = categories[0];
+    setSpecialIndex(0);
+    setSelectedCategory(firstCategory);
 
-  const categories = [
-    "COMMUNITY",
-    "MEDIA",
-    "VIP",
-    "VVIP",
-    "SUPER VVIP",
-    "DEALER",
-    "FRONT",
-    "LEASING",
-  ];
+    localWs.send(JSON.stringify({ action: "GENERATE_DUMMY_QR", payload: { category: firstCategory, count: 10 } }));
+  };
+
   const updateCount = (category, value) => {
     setCounts((prev) => ({ ...prev, [category]: Number(value) }));
   };
@@ -615,145 +481,252 @@ export default function DummyQrGenerator() {
   return (
     <div class="min-h-screen bg-black text-white p-8">
       <div class="max-w-7xl mx-auto space-y-8">
-        {/* PANEL: SPECIFIC USER GENERATOR */}
-        <div class="border border-white/10 rounded-2xl overflow-hidden bg-white/[0.03] p-8">
-          <h2 class="text-2xl font-bold mb-2">GENERATE SPECIFIC USER</h2>
-          <p class="text-zinc-400 text-sm mb-6">
-            Input data spesifik atau cari berdasarkan Unique ID.
-          </p>
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div>
-              <label class="block text-xs font-semibold mb-2 text-zinc-400">
-                UNIQUE ID
-              </label>
-              <input
-                type="text"
-                placeholder="Ex: XPENG-12345"
-                value={specificId()}
-                onInput={(e) => setSpecificId(e.currentTarget.value)}
-                class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-600 focus:border-[#D8FF24] outline-none"
-              />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold mb-2 text-zinc-400">
-                NAMA GUEST
-              </label>
-              <input
-                type="text"
-                placeholder="Ex: John Doe"
-                value={specificName()}
-                onInput={(e) => setSpecificName(e.currentTarget.value)}
-                class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-600 focus:border-[#D8FF24] outline-none"
-              />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold mb-2 text-zinc-400">
-                CATEGORY
-              </label>
-              <select
-                value={specificCat()}
-                onChange={(e) => setSpecificCat(e.currentTarget.value)}
-                class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white focus:border-[#D8FF24] outline-none"
-              >
-                <For each={categories}>
-                  {(cat) => <option value={cat}>{cat}</option>}
-                </For>
-              </select>
-            </div>
-            <div class="flex gap-2">
-              <button
-                onClick={generateInstantQR}
-                class="flex-1 bg-[#D8FF24] text-black h-[42px] rounded-lg font-bold hover:opacity-90 text-sm"
-              >
-                INSTANT PDF
-              </button>
-              <button
-                onClick={fetchAndDownloadFromWS}
-                class="flex-1 bg-zinc-800 text-white h-[42px] rounded-lg font-bold border border-white/10 hover:bg-zinc-700 text-sm"
-              >
-                FETCH SERVER
-              </button>
-            </div>
-          </div>
+        
+        <div>
+          <h1 class="text-4xl font-bold tracking-tight">XPENG DUMMY OPERATIONAL</h1>
+          <p class="mt-2 text-zinc-400 text-sm">QR Code Engine & Registration Hub.</p>
         </div>
 
-        {/* PANEL: DASHBOARD / BATCH GENERATOR */}
-        <div class="border border-white/10 rounded-2xl overflow-hidden bg-white/[0.03]">
-          <div class="px-8 py-8 border-b border-white/10">
-            <h1 class="text-4xl font-bold">DUMMY QR GENERATOR</h1>
-            <p class="mt-3 text-zinc-400">
-              Generate operational QR codes and export PDF by category.
-            </p>
-            <div>
+        {/* MENU TABS HEADER */}
+        <div class="flex border-b border-white/10 gap-2">
+          <button
+            onClick={() => setActiveTab("batch")}
+            class={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab() === "batch" ? "border-[#D8FF24] text-[#D8FF24]" : "border-transparent text-zinc-400 hover:text-white"}`}
+          >
+            📊 Batch Generator
+          </button>
+          <button
+            onClick={() => setActiveTab("specific")}
+            class={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab() === "specific" ? "border-[#D8FF24] text-[#D8FF24]" : "border-transparent text-zinc-400 hover:text-white"}`}
+          >
+            🔍 Find & Tools
+          </button>
+          <button
+            onClick={() => setActiveTab("register")}
+            class={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab() === "register" ? "border-[#D8FF24] text-[#D8FF24]" : "border-transparent text-zinc-400 hover:text-white"}`}
+          >
+            👤 Register Single User
+          </button>
+        </div>
+
+        {/* TAB 1: BATCH GENERATOR */}
+        <Show when={activeTab() === "batch"}>
+          <div class="space-y-6">
+            <div class="border border-white/10 rounded-2xl bg-white/[0.02] p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 class="text-lg font-bold">Sequence Automation</h3>
+                <p class="text-zinc-400 text-xs">Generate 10 operational dummy tokens automatically across categories.</p>
+              </div>
               <button
                 onClick={generateTenDistinctPerCategory}
                 disabled={loading()}
-                class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl font-bold hover:opacity-90 transition disabled:opacity-50 text-base shadow-lg"
+                class="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 transition disabled:opacity-50 text-sm shadow-lg"
               >
-                {loading() && isSpecialMode()
-                  ? "GENERATING 10 QRs PER CATEGORY..."
-                  : "🔥 GENERATE 10 DISTINCT QRs PER CATEGORY"}
+                {loading() && isSpecialMode() ? "Processing Sequences..." : "🔥 Run 10 QRs / Category Sequence"}
               </button>
             </div>
+
+            <div class="border border-white/10 rounded-2xl overflow-hidden bg-white/[0.01]">
+              <table class="w-full text-sm">
+                <thead class="bg-white/[0.03] text-zinc-400">
+                  <tr>
+                    <th class="p-4 text-left font-semibold">Category</th>
+                    <th class="p-4 text-left font-semibold">Generate Input Count</th>
+                    <th class="p-4 text-left font-semibold">Total Pool Registered</th>
+                    <th class="p-4 text-center font-semibold">Execution Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <For each={categories}>
+                    {(cat) => (
+                      <tr class="border-t border-white/10 hover:bg-white/[0.02] transition-colors">
+                        <td class="p-4 font-medium text-white">{cat}</td>
+                        <td class="p-4">
+                          <input
+                            type="number"
+                            min="1"
+                            value={counts()[cat]}
+                            onInput={(e) => updateCount(cat, e.currentTarget.value)}
+                            class="w-32 bg-black border border-white/10 rounded-lg p-2 text-white outline-none focus:border-[#D8FF24]"
+                          />
+                        </td>
+                        <td class="p-4 text-zinc-300 font-mono">{dummySummary()[cat]?.generated || 0}</td>
+                        <td class="p-4 flex justify-center gap-2">
+                          <button onClick={() => generateDummyQR(cat)} class="bg-[#D8FF24] text-black px-4 py-2 rounded-lg font-bold text-xs hover:opacity-90 transition">GENERATE</button>
+                          <button onClick={() => downloadCategory(cat)} class="bg-zinc-800 text-white border border-white/15 px-4 py-2 rounded-lg font-bold text-xs hover:bg-zinc-700 transition">DOWNLOAD ZIP</button>
+                        </td>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div class="mt-8 border border-white/10 rounded-2xl overflow-hidden">
-            <table class="w-full">
-              <thead class="bg-white/[0.03]">
-                <tr>
-                  <th class="p-4 text-left">Category</th>
-                  <th class="p-4 text-left">Total User</th>
-                  <th class="p-4 text-left">Generated</th>
-                  <th class="p-4 text-left">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <For each={categories}>
-                  {(cat) => (
-                    <tr class="border-t border-white/10">
-                      <td class="p-4">{cat}</td>
-                      <td class="p-4">
-                        <input
-                          type="number"
-                          min="1"
-                          value={counts()[cat]}
-                          onInput={(e) =>
-                            updateCount(cat, e.currentTarget.value)
-                          }
-                          class="w-32 bg-black border border-white/10 rounded-lg p-2"
-                        />
-                      </td>
-                      <td class="p-4">{dummySummary()[cat]?.generated || 0}</td>
-                      <td class="p-4 gap-2 flex">
-                        <button
-                          onClick={() => generateDummyQR(cat)}
-                          class="bg-[#D8FF24] text-black px-4 py-2 rounded-lg font-bold"
-                        >
-                          GENERATE
-                        </button>
-                        <button
-                          class="bg-[#D8FF24] text-black px-4 py-2 rounded-lg font-bold"
-                          onClick={() => downloadCategory(cat)}
-                        >
-                          DOWNLOAD
-                        </button>
-                      </td>
-                    </tr>
-                  )}
-                </For>
-              </tbody>
-            </table>
+        </Show>
+
+        {/* TAB 2: FIND & TOOLS */}
+        <Show when={activeTab() === "specific"}>
+          <div class="border border-white/10 rounded-2xl bg-white/[0.02] p-8 space-y-6">
+            <div>
+              <h2 class="text-xl font-bold">Render & Search Utility</h2>
+              <p class="text-zinc-400 text-xs">Temukan data terdaftar di server atau paksa render template secara lokal menggunakan data bebas.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-semibold mb-2 text-zinc-400">UNIQUE REGISTRATION ID</label>
+                <input type="text" placeholder="Ex: XPENG-12345" value={specificId()} onInput={(e) => setSpecificId(e.currentTarget.value)} class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-600 focus:border-[#D8FF24] outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold mb-2 text-zinc-400">NAMA GUEST (LOCAL RENDER ONLY)</label>
+                <input type="text" placeholder="Ex: John Doe" value={specificName()} onInput={(e) => setSpecificName(e.currentTarget.value)} class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-600 focus:border-[#D8FF24] outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold mb-2 text-zinc-400">CATEGORY (LOCAL RENDER ONLY)</label>
+                <select value={specificCat()} onChange={(e) => setSpecificCat(e.currentTarget.value)} class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white focus:border-[#D8FF24] outline-none cursor-pointer">
+                  <For each={categories}>{(cat) => <option value={cat}>{cat}</option>}</For>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3 pt-2">
+              <button onClick={fetchAndDownloadFromWS} class="bg-zinc-800 text-white border border-white/10 px-5 py-2.5 rounded-lg font-bold hover:bg-zinc-700 text-xs transition">🔍 FETCH FROM SERVER DB</button>
+              <button onClick={generateInstantQR} class="bg-[#D8FF24] text-black px-5 py-2.5 rounded-lg font-bold hover:opacity-90 text-xs transition">🖨️ FORCED INSTANT LOCAL PDF</button>
+            </div>
           </div>
-        </div>
+        </Show>
+
+        {/* TAB 3: REGISTER SINGLE USER DENGAN SPLIT PREVIEW LAYOUT */}
+        <Show when={activeTab() === "register"}>
+          <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start max-w-6xl mx-auto">
+            
+            {/* PANEL FORM KIRI */}
+            <div class="border border-white/10 rounded-2xl bg-white/[0.02] p-8 space-y-6">
+              <div>
+                <h2 class="text-xl font-bold">Single Guest Manual Registration</h2>
+                <p class="text-zinc-400 text-xs">Daftarkan langsung 1 orang tamu baru ke sistem produksi event.</p>
+              </div>
+
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-xs font-semibold mb-1 text-zinc-400">NAMA LENGKAP TAMU <span class="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    placeholder="Ex: John Doe"
+                    value={regName()}
+                    onInput={(e) => setRegName(e.currentTarget.value)}
+                    class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-700 focus:border-[#D8FF24] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold mb-1 text-zinc-400">ALAMAT EMAIL <span class="text-red-500">*</span></label>
+                  <input
+                    type="email"
+                    placeholder="example@domain.com"
+                    value={regEmail()}
+                    onInput={(e) => setRegEmail(e.currentTarget.value)}
+                    class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-700 focus:border-[#D8FF24] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold mb-1 text-zinc-400">NOMOR TELEPON / HP</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 0812xxxxxxxx"
+                    value={regPhone()}
+                    onInput={(e) => setRegPhone(e.currentTarget.value)}
+                    class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-700 focus:border-[#D8FF24] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold mb-1 text-zinc-400">PERUSAHAAN / COMPANY</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: PT Era Inovasi Otomotif"
+                    value={regCompany()}
+                    onInput={(e) => setRegCompany(e.currentTarget.value)}
+                    class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-700 focus:border-[#D8FF24] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold mb-1 text-zinc-400">KATEGORI TIKET UNDANGAN <span class="text-red-500">*</span></label>
+                  <select 
+                    value={regCategory()} 
+                    onChange={(e) => setRegCategory(e.currentTarget.value)} 
+                    class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white focus:border-[#D8FF24] outline-none cursor-pointer"
+                  >
+                    <For each={categories}>{(cat) => <option value={cat}>{cat}</option>}</For>
+                  </select>
+                </div>
+              </div>
+
+              <div class="border-t border-white/10 pt-4 flex justify-end">
+                <button
+                  onClick={handleRegisterSingleUser}
+                  disabled={loading()}
+                  class="w-full bg-[#D8FF24] text-black py-3 rounded-xl font-bold text-sm hover:opacity-95 transition shadow-[0_0_20px_rgba(216,255,36,0.15)] disabled:opacity-50"
+                >
+                  {loading() ? "PROSES PENDAFTARAN..." : "➕ SUBMIT DATA TAMU"}
+                </button>
+              </div>
+            </div>
+
+            {/* PANEL LIVE PREVIEW KANAN */}
+            <div class="space-y-4">
+              <Show 
+                when={lastRegisteredUser()} 
+                fallback={
+                  <div class="border border-dashed border-white/10 bg-white/[0.01] rounded-2xl p-8 text-center text-zinc-600 text-xs italic h-[400px] flex items-center justify-center">
+                    QR Undangan asli dari server akan otomatis muncul di sini setelah sukses register.
+                  </div>
+                }
+              >
+                <div class="border border-[#D8FF24] bg-[#050505] rounded-2xl p-6 flex flex-col items-center justify-between text-center space-y-4 shadow-[0_0_30px_rgba(216,255,36,0.1)]">
+                  <div class="w-full bg-[#D8FF24] text-black font-black py-2 rounded-xl text-xs tracking-wider">
+                    🎉 SUCCESS REGISTERED
+                  </div>
+                  
+                  <div class="bg-white p-3 rounded-2xl inline-block shadow-inner mt-2">
+                    <img 
+                      src={lastRegisteredUser().qrCodeUrl} 
+                      alt="Server Generated QR" 
+                      class="w-44 h-44 block object-contain"
+                      crossorigin="anonymous"
+                    />
+                  </div>
+
+                  <div class="w-full space-y-1 mt-2">
+                    <h4 class="text-xl font-bold text-white line-clamp-1">{lastRegisteredUser().name}</h4>
+                    <p class="text-xs text-zinc-400 line-clamp-1">{lastRegisteredUser().company}</p>
+                    <span class="inline-block mt-2 px-3 py-0.5 bg-zinc-900 text-[#D8FF24] border border-white/10 rounded-full text-[11px] font-semibold">
+                      {lastRegisteredUser().category}
+                    </span>
+                  </div>
+
+                  <div class="text-[11px] font-mono text-zinc-400 bg-black w-full py-2.5 border border-white/5 rounded-lg select-all">
+                    ID: {lastRegisteredUser().uniqueId}
+                  </div>
+
+                  <button
+                    onClick={() => createPdf([lastRegisteredUser()], lastRegisteredUser().category)}
+                    class="w-full bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 py-3 rounded-xl text-xs font-bold transition"
+                  >
+                    🖨️ DOWNLOAD OFFICIAL PDF
+                  </button>
+                </div>
+              </Show>
+            </div>
+
+          </div>
+        </Show>
+
       </div>
-      <div
-        id="pdf-render-container"
-        style={{
-          position: "fixed",
-          left: "-99999px",
-          top: "0",
-          width: "900px",
-        }}
-      ></div>
+
+      <div id="pdf-render-container" style={{ position: "fixed", left: "-99999px", top: "0", width: "900px" }}></div>
     </div>
   );
 }
