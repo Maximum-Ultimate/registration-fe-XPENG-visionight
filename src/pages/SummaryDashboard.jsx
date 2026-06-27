@@ -683,12 +683,25 @@ export default function SummaryDashboard() {
       "Apakah kamu yakin ingin menghapus semua riwayat scan?",
     );
     if (confirmClear) {
+      // 1. Kosongkan state (agar langsung hilang di layar)
       setScanHistory([]);
       setParticipant(null);
+
+      // 2. Kosongkan/hapus juga dari localStorage agar pas di-refresh tidak muncul lagi
+      // Ganti 'scanHistory' dengan nama key yang kamu pakai di aplikasi kamu
+      localStorage.removeItem("scanHistory");
+
+      // ATAU bisa juga di-set jadi array kosong string:
+      // localStorage.setItem("scanHistory", JSON.stringify([]));
     }
   };
+
   const clearManualHistory = () => {
+    // 1. Kosongkan state
     setManualHistory([]);
+
+    // 2. Hapus dari localStorage (sesuaikan nama key-nya)
+    localStorage.removeItem("manualHistory");
   };
   const verticalSummaryMemo = createMemo(() => {
     const result = {};
