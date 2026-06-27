@@ -288,7 +288,7 @@ export default function SummaryDashboard() {
       setSortDirection("asc");
     }
   };
-  const downloadCSV = () => {
+  const downloadCSVFirst = () => {
     const dataToExport = filteredUsers();
     const emailsWithPlusOne = parentEmailsSet();
 
@@ -339,6 +339,88 @@ export default function SummaryDashboard() {
     link.click();
     document.body.removeChild(link);
   };
+  const downloadCSV = () => {
+  // 1. Ambil data terfilter & info filter yang aktif saat ini
+  const currentData = filteredUsers();
+  const totalData = currentData.length;
+  
+  const currentSearch = search() ? search().trim() : "None";
+  const currentCategory = categoryFilter() || "ALL";
+  const currentAttendance = attendanceFilter() || "ALL";
+
+  // 2. Tentukan header kolom utama tabel
+  const tableHeaders = [
+    "Name", 
+    "Category", 
+    "Company", 
+    "Email", 
+    "Plus One Status", 
+    "Confirmation", 
+    "Attendance", 
+    "Vertical",
+    "QR Link"
+  ];
+
+  // 3. Map data user ke bentuk baris array
+  const rows = currentData.map((user) => {
+    const isPlusOne = user.parent_name && user.parent_name.trim() !== "";
+    const bringsPlusOne = user.email && parentEmailsSet().has(user.email.trim().toLowerCase());
+    let plusOneStatus = "-";
+    if (isPlusOne) plusOneStatus = `+1 of ${user.parent_name}`;
+    else if (bringsPlusOne) plusOneStatus = "Brings +1";
+
+    const baseurl = "https://rsvp.xpengvisionnight.co.id/rsvp";
+
+    return [
+      user.name || "-",
+      user.category || "-",
+      user.company || "-",
+      user.email || "-",
+      plusOneStatus,
+      user.status_confirmation || "-",
+      user.status_attendance || "-",
+      user.vertical || "-",
+      `${baseurl}/${user.uniqueId}`
+    ];
+  });
+
+  // 4. Susun struktur CSV sesuai request (Ada "FILTERED BY:" di paling atas)
+  const csvMatrix = [
+    ["FILTERED BY:"],                             // Baris 1: Judul Filter
+    ["Search Keyword", currentSearch],            // Baris 2: Detail Search
+    ["Category Filter", currentCategory],         // Baris 3: Detail Kategori
+    ["Attendance Filter", currentAttendance],     // Baris 4: Detail Absensi
+    ["Total Data", totalData],                 // Baris 5: Total Baris Hasil Filter
+    [],                                           // Baris 6: Baris kosong biar rapi
+    tableHeaders,                                 // Baris 7: Header Kolom Utama
+    ...rows                                       // Baris 8 dst: Data Tamu
+  ];
+
+  // 5. Ubah array matrix menjadi string CSV
+  const csvContent = csvMatrix
+    .map((row) =>
+      row
+        .map((value) => {
+          const stringValue = String(value ?? "");
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        })
+        .join(",")
+    )
+    .join("\n");
+
+  // 6. Proses download file dengan nama file tetap/clean
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  
+  link.setAttribute("href", url);
+  link.setAttribute("download", "guest_list_export.csv"); // <-- Nama file statis, gak ada lagi angka total data
+  link.style.visibility = "hidden";
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
   const handleSendEmail = (uniqueId, name) => {
     const bodyPayload = {
       action: "DIRECT_INVITE_USERS",
