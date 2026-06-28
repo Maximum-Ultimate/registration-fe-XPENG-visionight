@@ -76,15 +76,17 @@ export default function DummyQrGenerator() {
         if (response?.status === "success") {
           const baseCloudUrl = "https://cloud.xpengvisionnight.co.id";
           const qrPath = response.data?.qrCodeFilePath || "";
-          
+
           // 🔥 EKSTRAKSI UUID LANGSUNG DARI FILE PATH
-          const extractedUniqueId = qrPath.split('/').pop()?.replace('.png', '') || String(response.data?.userId || "");
+          const extractedUniqueId =
+            qrPath.split("/").pop()?.replace(".png", "") ||
+            String(response.data?.userId || "");
           const fullQrUrl = qrPath ? `${baseCloudUrl}/${qrPath}` : "";
 
           // Daftarkan ke state agar dibaca preview card & template PDF
           setLastRegisteredUser({
             userId: response.data?.userId || "PENDING",
-            uniqueId: extractedUniqueId, 
+            uniqueId: extractedUniqueId,
             name: regName(),
             category: regCategory(),
             company: regCompany() || "-",
@@ -98,7 +100,7 @@ export default function DummyQrGenerator() {
             confirmButtonColor: "#D8FF24",
             background: "#111111",
             color: "#ffffff",
-            timer: 2000
+            timer: 2000,
           });
 
           // Reset Form input utama
@@ -106,13 +108,16 @@ export default function DummyQrGenerator() {
           setRegEmail("");
           setRegPhone("");
           setRegCompany("");
-          
+
           localWs.send(JSON.stringify({ action: "GET_DASHBOARD_SUMMARY" }));
         } else {
           await Swal.fire({
             icon: "error",
             title: "Registration Failed",
-            text: response?.message || response?.error || "Gagal memproses pendaftaran.",
+            text:
+              response?.message ||
+              response?.error ||
+              "Gagal memproses pendaftaran.",
             confirmButtonColor: "#D8FF24",
             background: "#111111",
             color: "#ffffff",
@@ -129,7 +134,10 @@ export default function DummyQrGenerator() {
         return;
       }
 
-      if (response.status === "success" && response.type === "dummy-users-generated") {
+      if (
+        response.status === "success" &&
+        response.type === "dummy-users-generated"
+      ) {
         setUsers(response.data);
         if (isSpecialMode()) {
           const modifiedData = response.data.map((user) => ({
@@ -143,7 +151,10 @@ export default function DummyQrGenerator() {
           });
 
           try {
-            await createCompactPdf(modifiedData, `${selectedCategory()}_SPECIAL_10_${Date.now()}`);
+            await createCompactPdf(
+              modifiedData,
+              `${selectedCategory()}_SPECIAL_10_${Date.now()}`,
+            );
             const nextIdx = specialIndex() + 1;
 
             if (nextIdx < categories.length) {
@@ -151,7 +162,12 @@ export default function DummyQrGenerator() {
               setSpecialIndex(nextIdx);
               setSelectedCategory(nextCategory);
               setTimeout(() => {
-                localWs.send(JSON.stringify({ action: "GENERATE_DUMMY_QR", payload: { category: nextCategory, count: 10 } }));
+                localWs.send(
+                  JSON.stringify({
+                    action: "GENERATE_DUMMY_QR",
+                    payload: { category: nextCategory, count: 10 },
+                  }),
+                );
               }, 1000);
             } else {
               setIsSpecialMode(false);
@@ -170,7 +186,13 @@ export default function DummyQrGenerator() {
             setIsSpecialMode(false);
             setSpecialIndex(-1);
             setLoading(false);
-            Swal.fire({ icon: "error", title: "Special Generation Failed", text: err.message, background: "#111827", color: "#fff" });
+            Swal.fire({
+              icon: "error",
+              title: "Special Generation Failed",
+              text: err.message,
+              background: "#111827",
+              color: "#fff",
+            });
           }
           return;
         }
@@ -181,7 +203,10 @@ export default function DummyQrGenerator() {
         });
 
         try {
-          await createCompactPdf(response.data, `${selectedCategory()}_BATCH_${Date.now()}`);
+          await createCompactPdf(
+            response.data,
+            `${selectedCategory()}_BATCH_${Date.now()}`,
+          );
           Swal.fire({
             icon: "success",
             title: "ZIP Downloaded",
@@ -193,7 +218,13 @@ export default function DummyQrGenerator() {
           });
           localWs.send(JSON.stringify({ action: "GET_DASHBOARD_SUMMARY" }));
         } catch (err) {
-          Swal.fire({ icon: "error", title: "ZIP Generation Failed", text: err.message, background: "#111827", color: "#fff" });
+          Swal.fire({
+            icon: "error",
+            title: "ZIP Generation Failed",
+            text: err.message,
+            background: "#111827",
+            color: "#fff",
+          });
         }
         setLoading(false);
         return;
@@ -201,34 +232,72 @@ export default function DummyQrGenerator() {
 
       if (response.type === "user-detail") {
         if (!response.data || !response.data.uniqueId) {
-          Swal.fire({ icon: "error", title: "User Tidak Ditemukan", text: "Unique ID tidak terdaftar di database server.", background: "#111827", color: "#fff" });
+          Swal.fire({
+            icon: "error",
+            title: "User Tidak Ditemukan",
+            text: "Unique ID tidak terdaftar di database server.",
+            background: "#111827",
+            color: "#fff",
+          });
           return;
         }
 
-        Swal.update({ title: "Generating PDF...", html: "Mempersiapkan undangan..." });
+        Swal.update({
+          title: "Generating PDF...",
+          html: "Mempersiapkan undangan...",
+        });
 
         try {
           await createPdf([response.data], response.data.category || "VIP");
           if (response.data.guest && response.data.guest.uniqueId) {
             await new Promise((r) => setTimeout(r, 500));
-            await createPdf([response.data.guest], response.data.guest.category || "VIP");
+            await createPdf(
+              [response.data.guest],
+              response.data.guest.category || "VIP",
+            );
           }
-          Swal.fire({ icon: "success", title: "Berhasil!", text: "PDF Undangan Berhasil didownload", background: "#111827", color: "#fff", timer: 2000, showConfirmButton: false });
+          Swal.fire({
+            icon: "success",
+            title: "Berhasil!",
+            text: "PDF Undangan Berhasil didownload",
+            background: "#111827",
+            color: "#fff",
+            timer: 2000,
+            showConfirmButton: false,
+          });
         } catch (err) {
-          Swal.fire({ icon: "error", title: "Gagal", text: err.message, background: "#111827", color: "#fff" });
+          Swal.fire({
+            icon: "error",
+            title: "Gagal",
+            text: err.message,
+            background: "#111827",
+            color: "#fff",
+          });
         }
         return;
       }
 
       if (response.type === "dummy-users-generated-error") {
         setLoading(false);
-        Swal.fire({ icon: "error", title: "Generate Failed", text: response.message || "Failed generate QR", background: "#111827", color: "#fff" });
+        Swal.fire({
+          icon: "error",
+          title: "Generate Failed",
+          text: response.message || "Failed generate QR",
+          background: "#111827",
+          color: "#fff",
+        });
         return;
       }
 
       if (response.type === "DOWNLOAD_DUMMY_CATEGORY_RESPONSE") {
         if (!response.success) {
-          Swal.fire({ icon: "error", title: "Download Failed", text: response.message, background: "#111827", color: "#fff" });
+          Swal.fire({
+            icon: "error",
+            title: "Download Failed",
+            text: response.message,
+            background: "#111827",
+            color: "#fff",
+          });
           return;
         }
 
@@ -240,14 +309,28 @@ export default function DummyQrGenerator() {
           showConfirmButton: false,
           background: "#111827",
           color: "#fff",
-          didOpen: () => { Swal.showLoading(); },
+          didOpen: () => {
+            Swal.showLoading();
+          },
         });
 
         try {
           await createCompactPdf(response.data, response.category);
-          Swal.fire({ icon: "success", title: "Download Complete", text: `${response.category}_QR.zip downloaded`, background: "#111827", color: "#fff" });
+          Swal.fire({
+            icon: "success",
+            title: "Download Complete",
+            text: `${response.category}_QR.zip downloaded`,
+            background: "#111827",
+            color: "#fff",
+          });
         } catch (err) {
-          Swal.fire({ icon: "error", title: "ZIP Generation Failed", text: err.message, background: "#111827", color: "#fff" });
+          Swal.fire({
+            icon: "error",
+            title: "ZIP Generation Failed",
+            text: err.message,
+            background: "#111827",
+            color: "#fff",
+          });
         }
         return;
       }
@@ -272,7 +355,9 @@ export default function DummyQrGenerator() {
     if (loading()) return;
     setLoading(true);
 
-    const mockMd5Password = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    const mockMd5Password = Array.from(
+      crypto.getRandomValues(new Uint8Array(16)),
+    )
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
@@ -283,13 +368,13 @@ export default function DummyQrGenerator() {
         email: regEmail(),
         phone: regPhone() || "-",
         company: regCompany() || "-",
-        position: "-", 
+        position: "-",
         city: "-",
         source: "DASHBOARD_MANUAL",
         category: regCategory(),
         dealer_id: 0,
         password: mockMd5Password,
-        sendEmail: false, 
+        sendEmail: false,
         status_confirmation: "confirmed",
       },
     };
@@ -301,7 +386,9 @@ export default function DummyQrGenerator() {
       showConfirmButton: false,
       background: "#111111",
       color: "#ffffff",
-      didOpen: () => { Swal.showLoading(); },
+      didOpen: () => {
+        Swal.showLoading();
+      },
     });
 
     if (localWs && localWs.readyState === WebSocket.OPEN) {
@@ -321,15 +408,20 @@ export default function DummyQrGenerator() {
 
   const createPdf = async (users, categoryName) => {
     let pdf = null;
-    const eventTime = ["VIP", "VVIP", "SUPER VVIP"].includes(categoryName) ? "16.30 - 21.00 WIB" : "14.00 - 21.00 WIB";
+    const eventTime = ["VIP", "VVIP", "SUPER VVIP"].includes(categoryName)
+      ? "16.30 - 21.00 WIB"
+      : "14.00 - 21.00 WIB";
     const container = document.getElementById("pdf-render-container");
 
     for (let i = 0; i < users.length; i++) {
       const user = users[i];
-      
-      const qrImage = user.qrCodeUrl 
-        ? user.qrCodeUrl 
-        : await QRCode.toDataURL(user.uniqueId || String(user.userId || ""), { width: 800, margin: 1 });
+
+      const qrImage = user.qrCodeUrl
+        ? user.qrCodeUrl
+        : await QRCode.toDataURL(user.uniqueId || String(user.userId || ""), {
+            width: 800,
+            margin: 1,
+          });
 
       container.innerHTML = `
       <div style="width:900px; box-sizing:border-box; background:#000; color:white; padding:40px; font-family:Arial,sans-serif;">
@@ -358,12 +450,20 @@ export default function DummyQrGenerator() {
         </div>
       </div>`;
 
-      await new Promise((r) => setTimeout(r, 400)); 
-      const canvas = await html2canvas(container.firstElementChild, { scale: 2, backgroundColor: "#000000", useCORS: true });
+      await new Promise((r) => setTimeout(r, 400));
+      const canvas = await html2canvas(container.firstElementChild, {
+        scale: 2,
+        backgroundColor: "#000000",
+        useCORS: true,
+      });
       const imgData = canvas.toDataURL("image/png");
 
       if (!pdf) {
-        pdf = new jsPDF({ orientation: canvas.width > canvas.height ? "landscape" : "portrait", unit: "px", format: [canvas.width, canvas.height] });
+        pdf = new jsPDF({
+          orientation: canvas.width > canvas.height ? "landscape" : "portrait",
+          unit: "px",
+          format: [canvas.width, canvas.height],
+        });
       } else {
         pdf.addPage([canvas.width, canvas.height]);
       }
@@ -375,10 +475,15 @@ export default function DummyQrGenerator() {
   const createCompactPdf = async (users, category) => {
     const zip = new JSZip();
     const container = document.getElementById("pdf-render-container");
-    const eventTime = ["VIP", "VVIP", "SUPER VVIP"].includes(category) ? "16.30 - 21.00 WIB" : "14.00 - 21.00 WIB";
+    const eventTime = ["VIP", "VVIP", "SUPER VVIP"].includes(category)
+      ? "16.30 - 21.00 WIB"
+      : "14.00 - 21.00 WIB";
 
     for (const user of users) {
-      const qrImage = await QRCode.toDataURL(user.uniqueId, { width: 1000, margin: 1 });
+      const qrImage = await QRCode.toDataURL(user.uniqueId, {
+        width: 1000,
+        margin: 1,
+      });
       container.innerHTML = `
       <div style="width:600px; background:#000; color:white; padding:32px; font-family:Arial,sans-serif; box-sizing:border-box;">
         <div style="border:1px solid #D8FF24; border-radius:24px; overflow:hidden; background:#050505;">
@@ -408,9 +513,24 @@ export default function DummyQrGenerator() {
       </div>`;
 
       await new Promise((r) => setTimeout(r, 100));
-      const canvas = await html2canvas(container.firstElementChild, { scale: 2, backgroundColor: "#000000", useCORS: true });
-      const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: [canvas.width, canvas.height] });
-      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, canvas.width, canvas.height);
+      const canvas = await html2canvas(container.firstElementChild, {
+        scale: 2,
+        backgroundColor: "#000000",
+        useCORS: true,
+      });
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "px",
+        format: [canvas.width, canvas.height],
+      });
+      pdf.addImage(
+        canvas.toDataURL("image/png"),
+        "PNG",
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
       zip.file(`${user.name}.pdf`, pdf.output("blob"));
     }
 
@@ -420,49 +540,138 @@ export default function DummyQrGenerator() {
 
   const generateInstantQR = async () => {
     if (!specificName() || !specificId()) {
-      Swal.fire({ icon: "error", title: "Input Kurang", text: "Nama dan Unique ID wajib diisi!", background: "#111827", color: "#fff" });
+      Swal.fire({
+        icon: "error",
+        title: "Input Kurang",
+        text: "Nama dan Unique ID wajib diisi!",
+        background: "#111827",
+        color: "#fff",
+      });
       return;
     }
-    Swal.fire({ title: "Preparing PDF...", text: "Rendering QR Code khusus...", allowOutsideClick: false, showConfirmButton: false, background: "#111827", color: "#fff", didOpen: () => { Swal.showLoading(); } });
+    Swal.fire({
+      title: "Preparing PDF...",
+      text: "Rendering QR Code khusus...",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      background: "#111827",
+      color: "#fff",
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
     try {
-      await createPdf([{ name: specificName(), uniqueId: specificId() }], specificCat());
-      Swal.fire({ icon: "success", title: "Downloaded", text: "PDF berhasil dibuat!", background: "#111827", color: "#fff", timer: 1500 });
+      await createPdf(
+        [{ name: specificName(), uniqueId: specificId() }],
+        specificCat(),
+      );
+      Swal.fire({
+        icon: "success",
+        title: "Downloaded",
+        text: "PDF berhasil dibuat!",
+        background: "#111827",
+        color: "#fff",
+        timer: 1500,
+      });
     } catch (err) {
-      Swal.fire({ icon: "error", title: "Gagal", text: err.message, background: "#111827", color: "#fff" });
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: err.message,
+        background: "#111827",
+        color: "#fff",
+      });
     }
   };
 
   const fetchAndDownloadFromWS = () => {
     if (!specificId()) {
-      Swal.fire({ icon: "error", title: "Unique ID Kosong", background: "#111827", color: "#fff" });
+      Swal.fire({
+        icon: "error",
+        title: "Unique ID Kosong",
+        background: "#111827",
+        color: "#fff",
+      });
       return;
     }
-    Swal.fire({ title: "Mencari data...", background: "#111827", color: "#fff", didOpen: () => { Swal.showLoading(); } });
-    localWs.send(JSON.stringify({ action: "GET_USER_BY_UNIQUEID", payload: { uniqueId: specificId() } }));
+    Swal.fire({
+      title: "Mencari data...",
+      background: "#111827",
+      color: "#fff",
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+    localWs.send(
+      JSON.stringify({
+        action: "GET_USER_BY_UNIQUEID",
+        payload: { uniqueId: specificId() },
+      }),
+    );
   };
 
   const generateDummyQR = async (category) => {
     if (!localWs || localWs.readyState !== WebSocket.OPEN) {
-      Swal.fire({ icon: "error", title: "WebSocket Not Connected", background: "#111827", color: "#fff" });
+      Swal.fire({
+        icon: "error",
+        title: "WebSocket Not Connected",
+        background: "#111827",
+        color: "#fff",
+      });
       return;
     }
-    Swal.fire({ title: "Generating QR...", text: "Please wait...", allowOutsideClick: false, showConfirmButton: false, background: "#111827", color: "#fff", didOpen: () => { Swal.showLoading(); } });
+    Swal.fire({
+      title: "Generating QR...",
+      text: "Please wait...",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      background: "#111827",
+      color: "#fff",
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
     setLoading(true);
     setSelectedCategory(category);
-    localWs.send(JSON.stringify({ action: "GENERATE_DUMMY_QR", payload: { category, count: counts()[category] } }));
+    localWs.send(
+      JSON.stringify({
+        action: "GENERATE_DUMMY_QR",
+        payload: { category, count: counts()[category] },
+      }),
+    );
   };
 
   const downloadCategory = (category) => {
-    localWs.send(JSON.stringify({ action: "DOWNLOAD_DUMMY_CATEGORY", payload: { category } }));
+    localWs.send(
+      JSON.stringify({
+        action: "DOWNLOAD_DUMMY_CATEGORY",
+        payload: { category },
+      }),
+    );
   };
 
   const generateTenDistinctPerCategory = () => {
     if (!localWs || localWs.readyState !== WebSocket.OPEN) {
-      Swal.fire({ icon: "error", title: "WebSocket Not Connected", background: "#111827", color: "#fff" });
+      Swal.fire({
+        icon: "error",
+        title: "WebSocket Not Connected",
+        background: "#111827",
+        color: "#fff",
+      });
       return;
     }
 
-    Swal.fire({ title: "Starting Special Sequence", text: "Generating exactly 10 distinct QRs for each category sequentially...", allowOutsideClick: false, showConfirmButton: false, background: "#111827", color: "#fff", didOpen: () => { Swal.showLoading(); } });
+    Swal.fire({
+      title: "Starting Special Sequence",
+      text: "Generating exactly 10 distinct QRs for each category sequentially...",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      background: "#111827",
+      color: "#fff",
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
 
     setIsSpecialMode(true);
     setLoading(true);
@@ -471,7 +680,35 @@ export default function DummyQrGenerator() {
     setSpecialIndex(0);
     setSelectedCategory(firstCategory);
 
-    localWs.send(JSON.stringify({ action: "GENERATE_DUMMY_QR", payload: { category: firstCategory, count: 10 } }));
+    localWs.send(
+      JSON.stringify({
+        action: "GENERATE_DUMMY_QR",
+        payload: { category: firstCategory, count: 10 },
+      }),
+    );
+  };
+  const generateDummyData = (e) => {
+    e.preventDefault();
+
+    // 1. Generate Email Dummy
+    const domains = ["example.com", "test.com", "mail.id", "dummy.com"];
+    const randomText = Math.random().toString(36).substring(2, 7);
+    const timestamp = Date.now().toString().slice(-4);
+    const randomDomain = domains[Math.floor(Math.random() * domains.length)];
+    const dummyEmail = `guest.${randomText}${timestamp}@${randomDomain}`;
+
+    setRegEmail(dummyEmail);
+
+    // 2. Generate Nomor HP Dummy (Format Indonesia)
+    const prefixes = ["0812", "0813", "0818", "0857", "0878", "0896"];
+    const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    // Membuat 8 digit angka acak belakang
+    const randomDigits = Math.floor(
+      10000000 + Math.random() * 90000000,
+    ).toString();
+    const dummyPhone = `${randomPrefix}${randomDigits}`;
+
+    setRegPhone(dummyPhone);
   };
 
   const updateCount = (category, value) => {
@@ -481,10 +718,13 @@ export default function DummyQrGenerator() {
   return (
     <div class="min-h-screen bg-black text-white p-8">
       <div class="max-w-7xl mx-auto space-y-8">
-        
         <div>
-          <h1 class="text-4xl font-bold tracking-tight">XPENG DUMMY OPERATIONAL</h1>
-          <p class="mt-2 text-zinc-400 text-sm">QR Code Engine & Registration Hub.</p>
+          <h1 class="text-4xl font-bold tracking-tight">
+            XPENG DUMMY OPERATIONAL
+          </h1>
+          <p class="mt-2 text-zinc-400 text-sm">
+            QR Code Engine & Registration Hub.
+          </p>
         </div>
 
         {/* MENU TABS HEADER */}
@@ -515,14 +755,19 @@ export default function DummyQrGenerator() {
             <div class="border border-white/10 rounded-2xl bg-white/[0.02] p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <h3 class="text-lg font-bold">Sequence Automation</h3>
-                <p class="text-zinc-400 text-xs">Generate 10 operational dummy tokens automatically across categories.</p>
+                <p class="text-zinc-400 text-xs">
+                  Generate 10 operational dummy tokens automatically across
+                  categories.
+                </p>
               </div>
               <button
                 onClick={generateTenDistinctPerCategory}
                 disabled={loading()}
                 class="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 transition disabled:opacity-50 text-sm shadow-lg"
               >
-                {loading() && isSpecialMode() ? "Processing Sequences..." : "🔥 Run 10 QRs / Category Sequence"}
+                {loading() && isSpecialMode()
+                  ? "Processing Sequences..."
+                  : "🔥 Run 10 QRs / Category Sequence"}
               </button>
             </div>
 
@@ -531,9 +776,15 @@ export default function DummyQrGenerator() {
                 <thead class="bg-white/[0.03] text-zinc-400">
                   <tr>
                     <th class="p-4 text-left font-semibold">Category</th>
-                    <th class="p-4 text-left font-semibold">Generate Input Count</th>
-                    <th class="p-4 text-left font-semibold">Total Pool Registered</th>
-                    <th class="p-4 text-center font-semibold">Execution Actions</th>
+                    <th class="p-4 text-left font-semibold">
+                      Generate Input Count
+                    </th>
+                    <th class="p-4 text-left font-semibold">
+                      Total Pool Registered
+                    </th>
+                    <th class="p-4 text-center font-semibold">
+                      Execution Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -546,14 +797,28 @@ export default function DummyQrGenerator() {
                             type="number"
                             min="1"
                             value={counts()[cat]}
-                            onInput={(e) => updateCount(cat, e.currentTarget.value)}
+                            onInput={(e) =>
+                              updateCount(cat, e.currentTarget.value)
+                            }
                             class="w-32 bg-black border border-white/10 rounded-lg p-2 text-white outline-none focus:border-[#D8FF24]"
                           />
                         </td>
-                        <td class="p-4 text-zinc-300 font-mono">{dummySummary()[cat]?.generated || 0}</td>
+                        <td class="p-4 text-zinc-300 font-mono">
+                          {dummySummary()[cat]?.generated || 0}
+                        </td>
                         <td class="p-4 flex justify-center gap-2">
-                          <button onClick={() => generateDummyQR(cat)} class="bg-[#D8FF24] text-black px-4 py-2 rounded-lg font-bold text-xs hover:opacity-90 transition">GENERATE</button>
-                          <button onClick={() => downloadCategory(cat)} class="bg-zinc-800 text-white border border-white/15 px-4 py-2 rounded-lg font-bold text-xs hover:bg-zinc-700 transition">DOWNLOAD ZIP</button>
+                          <button
+                            onClick={() => generateDummyQR(cat)}
+                            class="bg-[#D8FF24] text-black px-4 py-2 rounded-lg font-bold text-xs hover:opacity-90 transition"
+                          >
+                            GENERATE
+                          </button>
+                          <button
+                            onClick={() => downloadCategory(cat)}
+                            class="bg-zinc-800 text-white border border-white/15 px-4 py-2 rounded-lg font-bold text-xs hover:bg-zinc-700 transition"
+                          >
+                            DOWNLOAD ZIP
+                          </button>
                         </td>
                       </tr>
                     )}
@@ -569,29 +834,66 @@ export default function DummyQrGenerator() {
           <div class="border border-white/10 rounded-2xl bg-white/[0.02] p-8 space-y-6">
             <div>
               <h2 class="text-xl font-bold">Render & Search Utility</h2>
-              <p class="text-zinc-400 text-xs">Temukan data terdaftar di server atau paksa render template secara lokal menggunakan data bebas.</p>
+              <p class="text-zinc-400 text-xs">
+                Temukan data terdaftar di server atau paksa render template
+                secara lokal menggunakan data bebas.
+              </p>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label class="block text-xs font-semibold mb-2 text-zinc-400">UNIQUE REGISTRATION ID</label>
-                <input type="text" placeholder="Ex: XPENG-12345" value={specificId()} onInput={(e) => setSpecificId(e.currentTarget.value)} class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-600 focus:border-[#D8FF24] outline-none" />
+                <label class="block text-xs font-semibold mb-2 text-zinc-400">
+                  UNIQUE REGISTRATION ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: XPENG-12345"
+                  value={specificId()}
+                  onInput={(e) => setSpecificId(e.currentTarget.value)}
+                  class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-600 focus:border-[#D8FF24] outline-none"
+                />
               </div>
               <div>
-                <label class="block text-xs font-semibold mb-2 text-zinc-400">NAMA GUEST (LOCAL RENDER ONLY)</label>
-                <input type="text" placeholder="Ex: John Doe" value={specificName()} onInput={(e) => setSpecificName(e.currentTarget.value)} class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-600 focus:border-[#D8FF24] outline-none" />
+                <label class="block text-xs font-semibold mb-2 text-zinc-400">
+                  NAMA GUEST (LOCAL RENDER ONLY)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: John Doe"
+                  value={specificName()}
+                  onInput={(e) => setSpecificName(e.currentTarget.value)}
+                  class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white placeholder-zinc-600 focus:border-[#D8FF24] outline-none"
+                />
               </div>
               <div>
-                <label class="block text-xs font-semibold mb-2 text-zinc-400">CATEGORY (LOCAL RENDER ONLY)</label>
-                <select value={specificCat()} onChange={(e) => setSpecificCat(e.currentTarget.value)} class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white focus:border-[#D8FF24] outline-none cursor-pointer">
-                  <For each={categories}>{(cat) => <option value={cat}>{cat}</option>}</For>
+                <label class="block text-xs font-semibold mb-2 text-zinc-400">
+                  CATEGORY (LOCAL RENDER ONLY)
+                </label>
+                <select
+                  value={specificCat()}
+                  onChange={(e) => setSpecificCat(e.currentTarget.value)}
+                  class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white focus:border-[#D8FF24] outline-none cursor-pointer"
+                >
+                  <For each={categories}>
+                    {(cat) => <option value={cat}>{cat}</option>}
+                  </For>
                 </select>
               </div>
             </div>
 
             <div class="flex flex-wrap gap-3 pt-2">
-              <button onClick={fetchAndDownloadFromWS} class="bg-zinc-800 text-white border border-white/10 px-5 py-2.5 rounded-lg font-bold hover:bg-zinc-700 text-xs transition">🔍 FETCH FROM SERVER DB</button>
-              <button onClick={generateInstantQR} class="bg-[#D8FF24] text-black px-5 py-2.5 rounded-lg font-bold hover:opacity-90 text-xs transition">🖨️ FORCED INSTANT LOCAL PDF</button>
+              <button
+                onClick={fetchAndDownloadFromWS}
+                class="bg-zinc-800 text-white border border-white/10 px-5 py-2.5 rounded-lg font-bold hover:bg-zinc-700 text-xs transition"
+              >
+                🔍 FETCH FROM SERVER DB
+              </button>
+              <button
+                onClick={generateInstantQR}
+                class="bg-[#D8FF24] text-black px-5 py-2.5 rounded-lg font-bold hover:opacity-90 text-xs transition"
+              >
+                🖨️ FORCED INSTANT LOCAL PDF
+              </button>
             </div>
           </div>
         </Show>
@@ -599,17 +901,22 @@ export default function DummyQrGenerator() {
         {/* TAB 3: REGISTER SINGLE USER DENGAN SPLIT PREVIEW LAYOUT */}
         <Show when={activeTab() === "register"}>
           <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start max-w-6xl mx-auto">
-            
             {/* PANEL FORM KIRI */}
             <div class="border border-white/10 rounded-2xl bg-white/[0.02] p-8 space-y-6">
               <div>
-                <h2 class="text-xl font-bold">Single Guest Manual Registration</h2>
-                <p class="text-zinc-400 text-xs">Daftarkan langsung 1 orang tamu baru ke sistem produksi event.</p>
+                <h2 class="text-xl font-bold">
+                  Single Guest Manual Registration
+                </h2>
+                <p class="text-zinc-400 text-xs">
+                  Daftarkan langsung 1 orang tamu baru ke sistem produksi event.
+                </p>
               </div>
 
               <div class="space-y-4">
                 <div>
-                  <label class="block text-xs font-semibold mb-1 text-zinc-400">NAMA LENGKAP TAMU <span class="text-red-500">*</span></label>
+                  <label class="block text-xs font-semibold mb-1 text-zinc-400">
+                    NAMA LENGKAP TAMU <span class="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     placeholder="Ex: John Doe"
@@ -620,7 +927,19 @@ export default function DummyQrGenerator() {
                 </div>
 
                 <div>
-                  <label class="block text-xs font-semibold mb-1 text-zinc-400">ALAMAT EMAIL <span class="text-red-500">*</span></label>
+                  <div class="flex justify-between items-center mb-1">
+                    <label class="block text-xs font-semibold text-zinc-400">
+                      ALAMAT EMAIL <span class="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={generateDummyData}
+                      class="text-[10px] font-medium bg-white/5 hover:bg-[#D8FF24] text-zinc-400 hover:text-black px-2 py-1 rounded transition-colors border border-white/10 hover:border-transparent"
+                    >
+                      ⚡ Auto-Gen Data (Email & HP)
+                    </button>
+                  </div>
+
                   <input
                     type="email"
                     placeholder="example@domain.com"
@@ -631,7 +950,9 @@ export default function DummyQrGenerator() {
                 </div>
 
                 <div>
-                  <label class="block text-xs font-semibold mb-1 text-zinc-400">NOMOR TELEPON / HP</label>
+                  <label class="block text-xs font-semibold mb-1 text-zinc-400">
+                    NOMOR TELEPON / HP
+                  </label>
                   <input
                     type="text"
                     placeholder="Ex: 0812xxxxxxxx"
@@ -642,7 +963,9 @@ export default function DummyQrGenerator() {
                 </div>
 
                 <div>
-                  <label class="block text-xs font-semibold mb-1 text-zinc-400">PERUSAHAAN / COMPANY</label>
+                  <label class="block text-xs font-semibold mb-1 text-zinc-400">
+                    PERUSAHAAN / COMPANY
+                  </label>
                   <input
                     type="text"
                     placeholder="Ex: PT Era Inovasi Otomotif"
@@ -653,13 +976,17 @@ export default function DummyQrGenerator() {
                 </div>
 
                 <div>
-                  <label class="block text-xs font-semibold mb-1 text-zinc-400">KATEGORI TIKET UNDANGAN <span class="text-red-500">*</span></label>
-                  <select 
-                    value={regCategory()} 
-                    onChange={(e) => setRegCategory(e.currentTarget.value)} 
+                  <label class="block text-xs font-semibold mb-1 text-zinc-400">
+                    KATEGORI TIKET UNDANGAN <span class="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={regCategory()}
+                    onChange={(e) => setRegCategory(e.currentTarget.value)}
                     class="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white focus:border-[#D8FF24] outline-none cursor-pointer"
                   >
-                    <For each={categories}>{(cat) => <option value={cat}>{cat}</option>}</For>
+                    <For each={categories}>
+                      {(cat) => <option value={cat}>{cat}</option>}
+                    </For>
                   </select>
                 </div>
               </div>
@@ -677,11 +1004,12 @@ export default function DummyQrGenerator() {
 
             {/* PANEL LIVE PREVIEW KANAN */}
             <div class="space-y-4">
-              <Show 
-                when={lastRegisteredUser()} 
+              <Show
+                when={lastRegisteredUser()}
                 fallback={
                   <div class="border border-dashed border-white/10 bg-white/[0.01] rounded-2xl p-8 text-center text-zinc-600 text-xs italic h-[400px] flex items-center justify-center">
-                    QR Undangan asli dari server akan otomatis muncul di sini setelah sukses register.
+                    QR Undangan asli dari server akan otomatis muncul di sini
+                    setelah sukses register.
                   </div>
                 }
               >
@@ -689,19 +1017,23 @@ export default function DummyQrGenerator() {
                   <div class="w-full bg-[#D8FF24] text-black font-black py-2 rounded-xl text-xs tracking-wider">
                     🎉 SUCCESS REGISTERED
                   </div>
-                  
+
                   <div class="bg-white p-3 rounded-2xl inline-block shadow-inner mt-2">
-                    <img 
-                      src={lastRegisteredUser().qrCodeUrl} 
-                      alt="Server Generated QR" 
+                    <img
+                      src={lastRegisteredUser().qrCodeUrl}
+                      alt="Server Generated QR"
                       class="w-44 h-44 block object-contain"
                       crossorigin="anonymous"
                     />
                   </div>
 
                   <div class="w-full space-y-1 mt-2">
-                    <h4 class="text-xl font-bold text-white line-clamp-1">{lastRegisteredUser().name}</h4>
-                    <p class="text-xs text-zinc-400 line-clamp-1">{lastRegisteredUser().company}</p>
+                    <h4 class="text-xl font-bold text-white line-clamp-1">
+                      {lastRegisteredUser().name}
+                    </h4>
+                    <p class="text-xs text-zinc-400 line-clamp-1">
+                      {lastRegisteredUser().company}
+                    </p>
                     <span class="inline-block mt-2 px-3 py-0.5 bg-zinc-900 text-[#D8FF24] border border-white/10 rounded-full text-[11px] font-semibold">
                       {lastRegisteredUser().category}
                     </span>
@@ -712,7 +1044,12 @@ export default function DummyQrGenerator() {
                   </div>
 
                   <button
-                    onClick={() => createPdf([lastRegisteredUser()], lastRegisteredUser().category)}
+                    onClick={() =>
+                      createPdf(
+                        [lastRegisteredUser()],
+                        lastRegisteredUser().category,
+                      )
+                    }
                     class="w-full bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 py-3 rounded-xl text-xs font-bold transition"
                   >
                     🖨️ DOWNLOAD OFFICIAL PDF
@@ -720,13 +1057,19 @@ export default function DummyQrGenerator() {
                 </div>
               </Show>
             </div>
-
           </div>
         </Show>
-
       </div>
 
-      <div id="pdf-render-container" style={{ position: "fixed", left: "-99999px", top: "0", width: "900px" }}></div>
+      <div
+        id="pdf-render-container"
+        style={{
+          position: "fixed",
+          left: "-99999px",
+          top: "0",
+          width: "900px",
+        }}
+      ></div>
     </div>
   );
 }
